@@ -88,10 +88,11 @@ Read in file metadata, open file from igor, convert to pandas
 file_list = os.listdir(table_dir)
 
 # pull out MC-only Gg8 cells
+data_notes = pd.read_csv(os.path.join(table_dir, 'OSN_Gg8vOMP.csv'))
+
 noigor_list = np.array(data_notes[data_notes['Igor saved?'] == 'No'].index)
 data_notes = data_notes.drop(noigor_list)
 
-data_notes = pd.read_csv(os.path.join(table_dir, 'OSN_Gg8vOMP.csv'))
 MC_only = data_notes['Cell type'] == 'MC'
 Gg8_only = data_notes['Genotype'] == 'Gg8'
 
