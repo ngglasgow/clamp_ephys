@@ -1,0 +1,4 @@
+,Date,Cell ID,Cell Number,Cell Path,Genotype,Cell Type,Exclude Sweep Start,Exclude Sweep Stop,Raw Peaks (nA),Filtered Peaks (nA),Rs (MOhms)
+Mean,2019-02-06,JH190206_c3,3,JH190206_c3/JH190206_c3_drug_1.ibw,OMP,E TC,,, -0.1542, -0.1487, 11.8450
+St. Dev.,2019-02-06,JH190206_c3,3,JH190206_c3/JH190206_c3_drug_1.ibw,OMP,E TC,,,  0.0247,  0.0246,  0.5123
+SEM (n=50),2019-02-06,JH190206_c3,3,JH190206_c3/JH190206_c3_drug_1.ibw,OMP,E TC,,,  0.0035,  0.0035,  0.0725

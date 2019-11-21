@@ -1,0 +1,50 @@
+Cell name,Igor saved?,Genotype,Cell type,Response w/o drug,# of ctrl sweeps,Response after TTX,# of drug sweeps,Terribly noisy sweeps,Depol sweeps start,Depol sweeps stop,Sweep length
+JH181120_c2,No,Gg8,MC,No,,,,,,,
+JH181203_c3,No,Gg8,MC,No,,,,,,,
+JH181203_c5_ctrl_1,No,Gg8,MC,Yes,52,Yes,,,,,6 ms
+JH181205_c1,No,OMP,MC,"Small response, no drug",,,,,,,
+JH181205_realcell3,No,OMP,MC,Yes,,No,,,,,
+JH181205_c5,No,OMP,MC,N/A,,Yes,,,,,
+JH181206_c4_ctrl_1,No,OMP,MC,Small response,50,Yes (small),,,,,6 ms
+JH181120_c1_drug1_1,Yes,Gg8,MC,Yes,50,Yes,50,,,,3 ms
+JH181120_c3_ctrl_1,Yes,Gg8,MC,No,20,,,,,,3 ms
+JH181120_c4_ctrl_1,Yes,Gg8,MC,No,32,,,,,,3 ms
+JH181203_c1_ctrl_1,Yes,Gg8,MC,No,20,,,,,,3 ms
+JH181203_c2_ctrl2_1,Yes,Gg8,MC,No,24,,,,,,3 ms
+JH181203_c4_ctrl_1,Yes,Gg8,MC,No,20,,,,,,3 ms
+JH181221_c1_drug_1,Yes,Gg8,MC,Yes,50,No,50,,,,6 ms
+JH181221_c2_drug_1,Yes,Gg8,MC,Small response,50,No,50,,,,6 ms
+JH190124_c1_ctrl_1,Yes,Gg8,M TC,"Small response, no drug",50,,,,,,6 ms
+JH190124_c3_drug_1,Yes,Gg8,E TC,N/A,,Yes,50,,,,6 ms
+JH190128_c1_drug_1,Yes,Gg8,E TC,Small response,50,Yes (small blip),50,,,,6 ms
+JH190128_c2_drug_1,Yes,Gg8,E TC,N/A,,Yes (small blip),50,,,,6 ms
+JH190128_c3_drug_1,Yes,Gg8,E TC,N/A,,No,28,,25,,6 ms
+JH190130_c1_ctrl_1,Yes,Gg8,E TC,No,22,,,,19,,6 ms
+JH190130_c2_ctrl_1,Yes,Gg8,E TC,No,41,,,,36,,6 ms
+JH190130_c3_ctrl_1,Yes,Gg8,E TC,No,50,,,,,,6 ms
+JH190213_c1_drug_1,Yes,Gg8,E TC,No,50,No,50,,,,6 ms
+JH190213_c2_drug_1,Yes,Gg8,E TC,N/A,,No,50,,,,6 ms
+JH190213_c3_drug_1,Yes,Gg8,E TC,N/A,,No,50,,,,6 ms
+JH190214_c1_ctrl_1,Yes,Gg8,MC,"Small response, no drug",50,,,,,,6 ms
+JH190214_c2_drug_1,Yes,Gg8,MC,N/A,,No,50,,,,6 ms
+JH190124_c2_drug_1,Yes,Gg8,M TC,Yes,50,No,35,,32,,6 ms
+JH181205_c2_ctrl_1,Yes,OMP,MC,"Small response, no drug",50,,,,,,6 ms
+JH181205_c3_drug1b_1,Yes,OMP,MC,N/A,,Yes,50,,,,6 ms
+JH181206_c1_drug1_1,Yes,OMP,MC,Yes,50,Yes,50,,,,6 ms
+JH181206_c2_drug1_1,Yes,OMP,MC,N/A,,Yes,50,,,,6 ms
+JH181206_c3_drug1b_1,Yes,OMP,MC,No,50,,,,,,6 ms
+JH181206_c5_ctrl_1,Yes,OMP,MC,N/A,,Yes (small),50,,,,6 ms
+JH181222_c1_drug_1,Yes,OMP,MC,Yes,50,Yes (small),50,,,,6 ms
+JH190131_c1_drug_1,Yes,OMP,E TC,Yes,50,Yes,50,,,,6 ms
+JH190201_c1_ctrl_1,Yes,OMP,E TC,Yes,50,Yes,50 (appended to ctrl),,,,6 ms
+JH190201_c2_drug_1,Yes,OMP,E TC,N/A,,Yes,50,,,,6 ms
+JH190201_c3_drug_1,Yes,OMP,E TC,N/A,,Yes,50,,,,6 ms
+JH190204_c1_drug_1,Yes,OMP,E TC,Yes,50,Yes,50,,,,6 ms
+JH190204_c2_drug_1,Yes,OMP,E TC,N/A,,Yes,50,,,,6 ms
+JH190204_c3_drug_1,Yes,OMP,E TC,N/A,,Yes,50,,,,6 ms
+JH190204_c4_drug_1,Yes,OMP,E TC,N/A,,Yes,50,,,,6 ms
+JH190206_c2_drug_1,Yes,OMP,E TC,Yes,50,Yes,50,Noisy pump,,,6 ms
+JH190206_c3_drug_1,Yes,OMP,E TC,N/A,,Yes,50,Upward noise,,,6 ms
+JH190225_c1_drug_1,Yes,OMP,MC,Yes,3,Yes,50,Very noisy,,,6 ms
+JH190225_c2_drug_1,Yes,OMP,MC,N/A,,No,42,,39,,6 ms
+JH190225_c3_drug_1,Yes,OMP,MC,N/A,,Yes,56 (empty ones in beginning),Very noisy,,,6 ms
