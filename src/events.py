@@ -22,37 +22,57 @@ stops = np.where(y > end_threshold, y, 0)
 start_indices = np.nonzero(np.diff(np.sign(starts)) == 1)[0] + 1
 stop_indices = np.nonzero(np.diff(np.sign(stops)) == -1)[0]
 
+num_events = len(stop_indices)
+
 xs, ys, durations = [], [], []
 
-for event in range(len(stop_indices)):
+for event in range(num_events):
     event_x = x[start_indices[event]:stop_indices[event] + 1]
     event_y = y[start_indices[event]:stop_indices[event] + 1]
     duration = len(event_x) / 10
+
     xs.append(event_x)
     ys.append(event_y)
     durations.append(duration)
-
-# events = pd.DataFrame({'xs': xs, 'ys': ys, 'durations': durations})
-
-plt.figure()
-for event_x, event_y in zip(xs, ys):
-    plt.plot(event_x, event_y, c='k')
 
 window_start = 1
 window_stop = 2
 duration_threshold = 10
 
-for event_x, event_y, duration in zip(xs, ys, durs):
-    in_window = np.any(event_x[(event_x > window_start) & (event_x < window_stop)])
-    
+is_event_trial = []
+for event in range(num_events):
+    event_x = xs[event]
+    event_y = ys[event]
+    duration = durations[event]
+
+    in_window = np.any(
+        event_x[(event_x > window_start) & (event_x < window_stop)]
+        )
+
     if in_window == True:
         if duration >= duration_threshold:
-            event = True
-            print(event)
+            is_event = 1
+            is_event_trial.append(is_event)
         else:
-            event = False
-            print(event)
+            is_event = 0
+            is_event_trial.append(is_event)
     else:
-        event = False
-        print(event)
+        is_event = 0
+        is_event_trial.append(is_event)
+
+if sum(is_event_trial) >= 1:
+    event_trial = 1
+
+elif sum(is_event_trial) == 0:
+    event_trial = 0
+
+event_xs = pd.DataFrame(xs).T
+event_ys = pd.DataFrame(ys).T
+events = pd.DataFrame({
+    'event index': range(len(durations)),
+    'durations': durations,
+    'in window and duration': is_event_trial})
+
+plt.figure()
+plt.plot(event_xs, event_ys, c='k')
 
