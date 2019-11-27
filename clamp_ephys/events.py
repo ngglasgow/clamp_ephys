@@ -3,12 +3,9 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-import elephant
 from neo.io import IgorIO
 import os
-from collections import OrderedDict
-import math
-from scipy.signal import *
+
 
 x = np.linspace(0, 100, 10000)
 y = np.sin(x)
