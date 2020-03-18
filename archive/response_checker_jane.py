@@ -81,7 +81,7 @@ def std_baseline(data, stim_time, pre_stim=100, sf=10):
     return std
 
 
-def epsc_peak(data, baseline, stim_time, polarity='-', post_stim=100, sf=10):
+def epsc_peak(data, baseline, stim_time, polarity='-', post_stim=50, sf=10):
     '''
     Find the peak EPSC value for a pandas.Series or for each sweep (column) of
     a pandas.DataFrame. This finds the absolute peak value of mean baseline
@@ -142,22 +142,22 @@ elif machine == 'Linux':
     home_dir = '/run/user/1000/gvfs/smb-share:server=130.49.237.41,share=urban'
 
 elif machine == 'Windows':
-    home_dir = os.path.join('Z:', os.sep, 'urban')
+    home_dir = r"N:\urban\Huang"
 
 else:
     print("OS not recognized. \nPlease see Nate for correction.")
 
-project_dir = os.path.join(home_dir, 'Huang', 'OSN_OMPvGg8_MTC')
+project_dir = os.path.join(home_dir, 'Injected_GC_data', 'New_VC_pairs')
 figure_dir = os.path.join(project_dir, 'figures')
 table_dir = os.path.join(project_dir, 'tables')
 data_dir = os.path.join(project_dir, 'data')
 
 ''' ## Open the notes spreadsheet and parse for what we want to analyze ## '''
 # open metadata file
-data_notes = pd.read_csv(os.path.join(table_dir, 'OSN_Gg8vOMP.csv'))
+allcells_data_notes = pd.read_csv(os.path.join(table_dir, 'MC_TC_summary.csv'))
 
 # pull out cell_id for directory, file name, and make the full path
-file_name_list = data_notes['Cell name'].tolist()
+file_name_list = allcells_data_notes['Cell name'].tolist()
 cell_id_list = []
 
 for file in file_name_list:
@@ -168,18 +168,17 @@ for file in file_name_list:
 file_path_list = []
 
 for cell, file in zip(cell_id_list, file_name_list):
-    file_path = os.path.join(cell, file + '.ibw')
+    file_path = os.path.join(file + '.ibw')
     file_path_list.append(file_path)
 
-data_notes = pd.concat([pd.DataFrame({'File Path': file_path_list}), data_notes], axis=1)
+allcells_data_notes = pd.concat([pd.DataFrame({'File Path': file_path_list}), 
+    allcells_data_notes], axis=1)
+light_data_notes = allcells_data_notes[allcells_data_notes['Cell name'].str.contains("light")]
+spontaneous_data_notes = allcells_data_notes[allcells_data_notes['Cell name'].str.contains("spontaneous")]
 
-# drop cells that didn't save to igor
-noigor_list = np.array(data_notes[data_notes['Igor saved?'] == 'No'].index)
-data_notes = data_notes.drop(noigor_list)
-
-# update file name list to have only files you want to analyze after logic
-file_name_list = data_notes['Cell name'].tolist()
-file_path_list = data_notes['File Path'].tolist()
+allcells_data_notes.to_csv(os.path.join(table_dir, 'allcells_data_notes.csv'))
+light_data_notes.to_csv(os.path.join(table_dir, 'light_data_notes.csv'))
+spontaneous_data_notes.to_csv(os.path.join(table_dir, 'spontaneous_data_notes.csv'))
 
 ''' ##########################################################################
 This is all the analysis, figures, saving
@@ -198,6 +197,15 @@ for file_name, file_path in zip(file_name_list, file_path_list):
     data = igor_to_pandas(file_path, data_dir)
 
     '''
+        Pull out EPSC peak from unfiltered signals
+        Baseline 100 ms preceding blue light
+        Peak within 250 ms of blue light
+    '''
+
+    baseline = mean_baseline(data, 500)
+    peaks = epsc_peak(data, baseline, 500)
+
+    '''
         Pull out EPSC peaks from filtered signals
         Baseline 100 ms preceding blue light
         Peak within 250 ms of blue light
@@ -211,7 +219,7 @@ for file_name, file_path in zip(file_name_list, file_path_list):
 
     filt_baseline = mean_baseline(filt_data, 500)
     filt_baseline_std = std_baseline(filt_data, 500)
-    filt_peaks = epsc_peak(filt_data, filt_baseline, 500, post_stim=50)
+    filt_peaks = epsc_peak(filt_data, filt_baseline, 500)
 
     # make binary choice of whether the response is more than 3x std
     mean_std = filt_baseline_std.mean()
@@ -233,45 +241,7 @@ for file_name, file_path in zip(file_name_list, file_path_list):
 # save responses as csv
 responses_df.to_csv(os.path.join(table_dir, 'responses.csv'))
 
-
 # merge with data_notes and save
-responses_data_notes = pd.merge(data_notes, responses_df)
+responses_data_notes = pd.merge(allcells_data_notes, responses_df)
 responses_data_notes.to_csv(os.path.join(table_dir, 'responses_data_notes.csv'),
                             float_format='%8.4f', index=False)
-
-''' part to count number of responders for each genotype '''
-
-gg8 = responses_data_notes[responses_data_notes['Genotype'] == 'Gg8']
-gg8_yes = gg8[gg8['Response 3x STD'] == True]['Cell name'].tolist()
-
-omp = responses_data_notes[responses_data_notes['Genotype'] == 'OMP']
-omp_yes = omp[omp['Response 3x STD'] == True]['Cell name'].tolist()
-
-gg8_yes_ids = []
-
-for name in gg8_yes:
-    name_split = name.split('_')
-    cell_id = name_split[0] + '_' + name_split[1]
-    gg8_yes_ids.append(cell_id)
-
-omp_yes_ids = []
-
-for name in omp_yes:
-    name_split = name.split('_')
-    cell_id = name_split[0] + '_' + name_split[1]
-    omp_yes_ids.append(cell_id)
-
-n_gg8_yes = len(set(gg8_yes_ids))
-n_gg8 = len(gg8)
-print("Responses in {} out of {} cells in Gg8+ slices".format(n_gg8_yes, n_gg8))
-
-n_omp_yes = len(set(omp_yes_ids))
-n_omp = len(omp)
-print("Responses in {} out of {} cells in OMP+ slices".format(n_omp_yes, n_omp))
-
-test = responses_data_notes.Genotype.unique()
-for genotype in test:
-    print(genotype)
-
-responses_data_notes['Cell type'].unique().tolist()
-responses_data_notes
