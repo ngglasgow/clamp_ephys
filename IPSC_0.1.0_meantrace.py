@@ -197,7 +197,7 @@ elif machine == 'Linux':
     home_dir = os.path.join(os.path.expanduser('~'), 'urban/neurobio/Huang')
 
 elif machine == 'Windows':
-    home_dir = r"N:\urban\Huang"
+    home_dir = r"C:\Users\jhuang\Documents\phd_projects"
 
 else:
     print("OS not recognized. \nPlease see Nate for correction.")
