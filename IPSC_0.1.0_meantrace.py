@@ -197,12 +197,12 @@ elif machine == 'Linux':
     home_dir = '/run/user/1000/gvfs/smb-share:server=130.49.237.41,share=urban'
 
 elif machine == 'Windows':
-    home_dir = r"N:\urban\Huang"
+    home_dir = r"C:\Users\jhuang\Documents\phd_projects"
 
 else:
     print("OS not recognized. \nPlease see Nate for correction.")
 
-project_dir = os.path.join(home_dir, 'Injected_GC_data', 'New_VC_pairs')
+project_dir = os.path.join(home_dir, 'Injected_GC_data', 'VC_pairs')
 figure_dir = os.path.join(project_dir, 'figures')
 table_dir = os.path.join(project_dir, 'tables')
 data_dir = os.path.join(project_dir, 'data')
