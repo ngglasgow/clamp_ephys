@@ -8,7 +8,7 @@ Modified from EPSC_0.1.6_meantrace.py
 """
 # from __main__ import *
 
-#%%
+
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -65,7 +65,7 @@ def igor_to_pandas(file, data_dir):
     data_raw = IgorIO(filename=file_path)
     data_neo = data_raw.read_block()
     data_neo_array = data_neo.segments[0].analogsignals[0]
-    data_df = pd.DataFrame(data_neo_array.as_array())
+    data_df = pd.DataFrame(data_neo_array.as_array().squeeze())
 
     return data_df
 
@@ -182,7 +182,7 @@ def series_resistance(data, tp_start, vm_jump, sf=10):
 
     return rs
 
-#%%
+
 ''' *********************************************************************** '''
 
 ''' ################## Define file structure on server #################### '''
@@ -194,7 +194,7 @@ if machine == 'Darwin':
     home_dir = '/Volumes/Urban'
 
 elif machine == 'Linux':
-    home_dir = '/run/user/1000/gvfs/smb-share:server=130.49.237.41,share=urban'
+    home_dir = os.path.join(os.path.expanduser('~'), 'urban/neurobio/Huang')
 
 elif machine == 'Windows':
     home_dir = r"N:\urban\Huang"
@@ -202,7 +202,7 @@ elif machine == 'Windows':
 else:
     print("OS not recognized. \nPlease see Nate for correction.")
 
-project_dir = os.path.join(home_dir, 'Injected_GC_data', 'New_VC_pairs')
+project_dir = os.path.join(home_dir, 'Injected_GC_data', 'VC_pairs')
 figure_dir = os.path.join(project_dir, 'figures')
 table_dir = os.path.join(project_dir, 'tables')
 data_dir = os.path.join(project_dir, 'data')
@@ -236,7 +236,7 @@ allcells_data_notes.to_csv(os.path.join(table_dir, 'allcells_data_notes.csv'))
 light_data_notes.to_csv(os.path.join(table_dir, 'light_data_notes.csv'))
 spontaneous_data_notes.to_csv(os.path.join(table_dir, 'spontaneous_data_notes.csv'))
 
-#%%
+
 ''' ##########################################################################
 This is all the analysis, figures, saving
 Read in file metadata, open file from igor, convert to pandas
@@ -439,4 +439,4 @@ for file_name in file_name_list:
 ''' Make into autogenerate a jupyter notebook? '''
 
 
-# %%
+
