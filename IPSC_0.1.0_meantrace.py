@@ -68,7 +68,7 @@ def igor_to_pandas(file, data_dir):
     data_df = pd.DataFrame(data_neo_array.as_array().squeeze())
 
     return data_df
-
+# this is a test made by Nate
 
 def mean_baseline(data, stim_time, pre_stim=100, sf=10):
     '''
