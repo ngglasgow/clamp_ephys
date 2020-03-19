@@ -226,10 +226,12 @@ class file_structure:
         self.figures = os.path.join(self.project, 'figures')
         self.tables = os.path.join(self.project, 'tables')
         self.p2 = os.path.join(self.project, 'data/p2')
+        self.p2_files = os.listdir(self.p2)
         self.p14 = os.path.join(self.project, 'data/p14')
+        self.p2_files = os.listdir(self.p14)
 
     def __repr__(self):
-        return 'Project file structure for {}'.format(self.project)
+        return 'Project file structure and file lists for {}'.format(self.project)
 
 paths = file_structure('local', 'Injected_GC_data/VC_pairs')
 
