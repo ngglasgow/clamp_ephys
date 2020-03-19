@@ -186,30 +186,56 @@ def series_resistance(data, tp_start, vm_jump, sf=10):
 ''' *********************************************************************** '''
 
 ''' ################## Define file structure on server #################### '''
-# home_dir will depend on the OS, but the rest will not
-# query machine identity and set home_dir from there
-machine = platform.uname()[0]
+class file_structure:
+    def __init__(self, location, project_path):
+        '''
+        Creates an object with paths as attributes:
+        location:   str value 'local' or 'server' only, refers to where you are
+                    doing the actual work, 'local' by default.
+        project_path:   str of the root project path from wherever your home dir is
+        '''
+        machine = platform.uname()[0]
 
-if machine == 'Darwin':
-    home_dir = '/Volumes/Urban'
+        if location == 'local':
+            if machine == 'Darwin':
+                home_dir = '/Volumes/Urban'
 
-elif machine == 'Linux':
-    home_dir = os.path.join(os.path.expanduser('~'), 'urban/neurobio/Huang')
+            elif machine == 'Linux':
+                home_dir = os.path.join(os.path.expanduser('~'), 'urban/neurobio/Huang')
 
-elif machine == 'Windows':
-    home_dir = r"C:\Users\jhuang\Documents\phd_projects"
+            elif machine == 'Windows':
+                home_dir = r"C:\Users\jhuang\Documents\phd_projects"
 
-else:
-    print("OS not recognized. \nPlease see Nate for correction.")
+            else:
+                print("OS not recognized. \nPlease see Nate for correction.")
 
-project_dir = os.path.join(home_dir, 'Injected_GC_data', 'VC_pairs')
-figure_dir = os.path.join(project_dir, 'figures')
-table_dir = os.path.join(project_dir, 'tables')
-data_dir = os.path.join(project_dir, 'data')
+        elif location == 'server':
+            if machine == 'Darwin':
+                home_dir = '/Volumes/Urban'
+
+            elif machine == 'Linux':
+                home_dir = os.path.join(os.path.expanduser('~'), 'urban/neurobio/Huang')
+
+            elif machine == 'Windows':
+                home_dir = r"C:\Users\jhuang\Documents\phd_projects"
+
+            else:
+                print("OS not recognized. \nPlease see Nate for correction.")
+
+        self.project = os.path.join(home_dir, project_path)
+        self.figures = os.path.join(self.project, 'figures')
+        self.tables = os.path.join(self.project, 'tables')
+        self.p2 = os.path.join(self.project, 'data/p2')
+        self.p14 = os.path.join(self.project, 'data/p14')
+
+    def __repr__(self):
+        return 'Project file structure for {}'.format(self.project)
+
+paths = file_structure('local', 'Injected_GC_data/VC_pairs')
 
 ''' ## Open the notes spreadsheet and parse for what we want to analyze ## '''
 # open metadata file
-allcells_data_notes = pd.read_csv(os.path.join(table_dir, 'MC_TC_summary.csv'))
+allcells_data_notes = pd.read_csv(os.path.join(paths.tables, 'MC_TC_summary.csv'))
 
 # pull out cell_id for directory, file name, and make the full path
 file_name_list = allcells_data_notes['Cell name'].tolist()
@@ -232,9 +258,9 @@ allcells_data_notes = pd.concat([pd.DataFrame({'File Path': file_path_list}),
 light_data_notes = allcells_data_notes[allcells_data_notes['Cell name'].str.contains("light")]
 spontaneous_data_notes = allcells_data_notes[allcells_data_notes['Cell name'].str.contains("spontaneous")]
 
-allcells_data_notes.to_csv(os.path.join(table_dir, 'allcells_data_notes.csv'))
-light_data_notes.to_csv(os.path.join(table_dir, 'light_data_notes.csv'))
-spontaneous_data_notes.to_csv(os.path.join(table_dir, 'spontaneous_data_notes.csv'))
+allcells_data_notes.to_csv(os.path.join(paths.tables, 'allcells_data_notes.csv'))
+light_data_notes.to_csv(os.path.join(paths.tables, 'light_data_notes.csv'))
+spontaneous_data_notes.to_csv(os.path.join(paths.tables, 'spontaneous_data_notes.csv'))
 
 
 ''' ##########################################################################
@@ -371,7 +397,7 @@ for file_name in file_name_list:
 
     # save figure to file
 
-    fig_save_path = os.path.join(figure_dir, cell_type, condition, cell_id)
+    fig_save_path = os.path.join(paths.figures, cell_type, condition, cell_id)
     fig.savefig(fig_save_path +  '_' + cell_type + '_' + condition + '_summary.png', 
         dpi=300, format='png')
     
@@ -402,7 +428,7 @@ for file_name in file_name_list:
     # sweep_number
 
     # save summary_data to file
-    sweep_meta_path = os.path.join(table_dir, cell_type, condition, cell_id)
+    sweep_meta_path = os.path.join(paths.tables, cell_type, condition, cell_id)
     sweep_meta_data.to_csv(sweep_meta_path + '_' + cell_type + '_' + condition + 
         '_all_sweeps_data.csv', float_format='%8.4f', index=False, header=True)
 
@@ -424,13 +450,13 @@ for file_name in file_name_list:
     summary_data = pd.concat([summary_data, measures, n_sweeps], axis=1)
 
     # define path for saving file and save it
-    summary_path = os.path.join(table_dir, cell_type, condition, cell_id)
+    summary_path = os.path.join(paths.tables, cell_type, condition, cell_id)
     summary_data.to_csv(summary_path + '_' + cell_type + '_' + condition + 
         '_summary_data.csv', float_format='%8.4f', index=False)
 
 
     '''###### save filtered subtracted mean time series data to file #######'''
-    mean_timeseries_path = os.path.join(table_dir, cell_type, condition, cell_id)
+    mean_timeseries_path = os.path.join(paths.tables, cell_type, condition, cell_id)
     filt_data_mean.to_csv(mean_timeseries_path + '_' + cell_type + '_' + condition + 
         '_mean_timeseries.csv', float_format='%8.4f', index=False, header=False)
 
