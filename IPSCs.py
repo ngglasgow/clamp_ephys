@@ -163,7 +163,7 @@ def series_resistance(sf, data, tp_start, vm_jump):
         The series resistance for each sweep in MOhms.
     '''
     # find the baseline 10 ms pre test pulse and subtract from raw data
-    rs_baseline = mean_baseline(data, stim_time=tp_start, pre_stim=11)
+    rs_baseline = mean_baseline(sf=sf, data=data, stim_time=tp_start, pre_stim=11)
     rs_subtracted = data - rs_baseline
 
     # set up indices for starting and ending peak window
@@ -273,7 +273,7 @@ def indiv_cell_analysis(timepoint, file_name_list, data_dir, sf=10):
                                                     fs=10000.0)
         filt_data = pd.DataFrame(filt_data).T
 
-        filt_baseline = mean_baseline(filt_data, 500, sf)
+        filt_baseline = mean_baseline(sf=sf, data=filt_data, stim_time=500)
         filt_peaks = epsc_peak(sf, filt_data, filt_baseline, stim_time=500, post_stim=150)
 
         ''' Calculating Series Resistance (rs) from test pulse (tp) '''
