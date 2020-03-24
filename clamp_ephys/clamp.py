@@ -1,65 +1,10 @@
-# -*- coding: utf-8 -*-
-"""
-Created 25 March 2019
-Nathan Glasgow
-
-This module defines simple voltage clamp analysis functions for use with Igor
-binary files.
-
-"""
-# from __main__ import *
-
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
-import elephant
-from neo.io import IgorIO
 import os
-from collections import OrderedDict
-import math
+import numpy as np
+import pandas as pd
+from neo.io import IgorIO
 
 
-def get_metadata(file, data_notes):
-    '''Takes a filename and parses it for metadata, and returns metadata in an
-    orderedDict as a pandas DataFrame for saving later
-    Also takes information from the cell spreadsheet in data_notes'''
-
-    # pull out cell id, cell number, date and condition
-    file_split = file.split('_')
-    cell_id = file_split[0]+'_'+file_split[1]
-    cell_num = cell_id[-1:]
-    date = '20'+cell_id[2:4]+'-'+cell_id[4:6]+'-'+cell_id[6:8]
-
-    if 'drug' in file:
-        condition = 'TTX+4-AP'
-    else:
-        condition = 'control'
-
-    # grab metadata from data notes spreadsheet
-    file_data = data_notes[data_notes['Cell name'] == file]
-    cell_path = file_data['File Path'].tolist()[0]
-    genotype = file_data['Genotype'].tolist()[0]
-    cell_type = file_data['Cell type'].tolist()[0]
-    depol_sweep_start = file_data['Depol sweeps start'].tolist()[0]
-    depol_sweep_stop = file_data['Depol sweeps stop'].tolist()[0]
-
-    # save metadate into orderedDict pandas DataFrame
-    dict = OrderedDict()
-    dict['Date'] = date
-    dict['Cell ID'] = cell_id
-    dict['Cell Number'] = cell_num
-    dict['Cell Path'] = cell_path
-    # dict['Condition'] = condition
-    dict['Genotype'] = genotype
-    dict['Cell Type'] = cell_type
-    dict['Exclude Sweep Start'] = depol_sweep_start
-    dict['Exclude Sweep Stop'] = depol_sweep_stop
-    metadata = pd.DataFrame(dict, index=range(1))
-
-    return metadata
-
-
-def igor_to_pandas(file, data_dir):
+def igor_to_pandas(data_dir, file):
     '''This function opens an igor binary file (.ibw), extracts the time
     series data, and returns a pandas DataFrame'''
 
@@ -67,24 +12,24 @@ def igor_to_pandas(file, data_dir):
     data_raw = IgorIO(filename=file_path)
     data_neo = data_raw.read_block()
     data_neo_array = data_neo.segments[0].analogsignals[0]
-    data_df = pd.DataFrame(data_neo_array.as_array())
+    data_df = pd.DataFrame(data_neo_array.as_array().squeeze())
 
     return data_df
 
 
-def mean_baseline(data, stim_time, pre_stim=100, sf=10):
+def mean_baseline(sf, data, stim_time, pre_stim=100):
     '''
     Find the mean baseline in a given time series
     Parameters
     ----------
+    sf: int or float
+        The sampling frequency in kHz.
     data: pandas.Series or pandas.DataFrame
         The time series data for which you want a baseline.
     stim_time: int or float
         The time in ms when stimulus is triggered.
     pre_stim: int or float
         Time in ms before the stimulus trigger over which baseline is measured.
-    sf: int or float
-        The sampling frequency in kHz.
 
     Returns
     -------
@@ -99,7 +44,34 @@ def mean_baseline(data, stim_time, pre_stim=100, sf=10):
     return baseline
 
 
-def epsc_peak(data, baseline, stim_time, polarity='-', post_stim=100, sf=10):
+def std_baseline(sf, data, stim_time, pre_stim=100):
+    '''
+    Find the baseline st. dev. in a given time series
+    Parameters
+    ----------
+    data: pandas.Series or pandas.DataFrame
+        The time series data for which you want a baseline.
+    stim_time: int or float
+        The time in ms when stimulus is triggered.
+    pre_stim: int or float
+        Time in ms before the stimulus trigger over which baseline is measured.
+    sf: int or float
+        The sampling frequency in kHz.
+
+    Returns
+    -------
+    std: float or pandas.Series
+        The baseline st. dev. over the defined window
+    '''
+    start = (stim_time - pre_stim) * sf
+    stop = (stim_time - 1) * sf
+    window = data.iloc[start:stop]
+    std = window.std()
+
+    return std
+
+
+def epsc_peak(sf, data, baseline, stim_time, polarity='-', post_stim=100):
     '''
     Find the peak EPSC value for a pandas.Series or for each sweep (column) of
     a pandas.DataFrame. This finds the absolute peak value of mean baseline
@@ -107,6 +79,8 @@ def epsc_peak(data, baseline, stim_time, polarity='-', post_stim=100, sf=10):
 
     Parameters:
     -----------
+    sf: int or float
+        The sampling frequency in kHz. Default is 10 kHz.
     data: pandas.Series or pandas.DataFrame
         Time series data with stimulated synaptic response triggered at the
         same time for each sweep.
@@ -120,8 +94,7 @@ def epsc_peak(data, baseline, stim_time, polarity='-', post_stim=100, sf=10):
     post_stim: int or float
         Time in ms that marks the end of the sampling window post stimulus.
         Default is 100 ms.
-    sf: int or float
-        The sampling frequency in kHz. Default is 10 kHz.
+
 
     Returns
     -------
@@ -141,32 +114,37 @@ def epsc_peak(data, baseline, stim_time, polarity='-', post_stim=100, sf=10):
     else:
         raise ValueError(
             "polarity must either be + or -"
-        )
+        )    
 
     return epsc_peaks
 
 
-def series_resistance(data, tp_start, vm_jump, sf=10):
+def series_resistance(sf, data, tp_start=5, vm_jump=10, pre_tp=3, peak_factor=-12):
     '''
     Calculate the approximate series resistance (Rs) from a test pulse (tp).
 
     Parameters
     ----------
+    sf: int or float
+        Sampling frequency in kHz. Default is 10 kHz.
     data: pandas.Series or pandas.DataFrame
         Raw time series daata of the v-clamp recording in nA.
     tp_start: int or float
-        Time in ms when test pulse begins.
+        Time in ms when test pulse begins. Default is 5.
     vm_jump: int or float
-        Amplitude ofwhatever windows needs here the test pulse voltage command in mV..
-    sf: int or float
-        Sampling frequency in kHz. Default is 10 kHz.
+        Amplitude of whatever windows needs here the test pulse voltage command in mV.
+        This is 10 mV in MIES and -5 in Nathan's Igor program.
+    pre_tp: int or float
+        Time in ms before start of test pulse by which to measure the baseline.
+    peak_factor: int or float
+        Factor to multiply rs_peak by to get pA. Default is -12.
 
     Returns:
     rs: pandas.Series of float
         The series resistance for each sweep in MOhms.
     '''
-    # find the baseline 10 ms pre test pulse and subtract from raw data
-    rs_baseline = mean_baseline(data, stim_time=tp_start, pre_stim=11)
+    # find the baseline 5 ms pre test pulse and subtract from raw data
+    rs_baseline = mean_baseline(sf=sf, data=data, stim_time=tp_start, pre_stim=pre_tp)
     rs_subtracted = data - rs_baseline
 
     # set up indices for starting and ending peak window
@@ -180,6 +158,6 @@ def series_resistance(data, tp_start, vm_jump, sf=10):
         rs_peak = rs_window.min()
 
     # calculate Rs via V=IR -> Rs = V/I
-    rs = ((vm_jump * 10**-3) / (rs_peak * 10**-9)) * 10**-6
+    rs = ((vm_jump * 10**-3) / (rs_peak * 10**peak_factor)) * 10**-6
 
     return rs
