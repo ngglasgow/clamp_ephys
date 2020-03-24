@@ -8,11 +8,48 @@ epsc_peak_x.y.z.py
 
 import pandas as pd
 import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+sns.set_style(rc = {'figure.facecolor':'white'})
 import elephant
 from neo.io import IgorIO
 import os
 import platform
+from collections import OrderedDict
+import math
 
+def get_metadata(file, data_notes):
+    '''Takes a filename and parses it for metadata, and returns metadata in an
+    orderedDict as a pandas DataFrame for saving later
+    Also takes information from the cell spreadsheet in data_notes'''
+
+    # pull out cell id, cell number, date and condition
+    file_split = file.split('_')
+    cell_id = file_split[0]+'_'+file_split[1]
+    cell_num = cell_id[-1:]
+    date = '20'+cell_id[2:4]+'-'+cell_id[4:6]+'-'+cell_id[6:8]
+
+    if 'light' in file:
+        condition = 'light'
+    else:
+        condition = 'spontaneous'
+
+    # grab metadata from data notes spreadsheet
+    file_data = data_notes[data_notes['Cell name'] == file]
+    cell_path = file_data['File Path'].tolist()[0]
+    cell_type = file_data['Cell Type'].tolist()[0]
+
+    # save metadate into orderedDict pandas DataFrame
+    dict = OrderedDict()
+    dict['Date'] = date
+    dict['Cell ID'] = cell_id
+    dict['Cell Number'] = cell_num
+    dict['Cell Path'] = cell_path
+    dict['Condition'] = condition
+    dict['Cell Type'] = cell_type
+    metadata = pd.DataFrame(dict, index=range(1))
+
+    return metadata
 
 def igor_to_pandas(file, data_dir):
     '''This function opens an igor binary file (.ibw), extracts the time
@@ -22,24 +59,24 @@ def igor_to_pandas(file, data_dir):
     data_raw = IgorIO(filename=file_path)
     data_neo = data_raw.read_block()
     data_neo_array = data_neo.segments[0].analogsignals[0]
-    data_df = pd.DataFrame(data_neo_array.as_array())
+    data_df = pd.DataFrame(data_neo_array.as_array().squeeze())
 
     return data_df
 
 
-def mean_baseline(data, stim_time, pre_stim=100, sf=10):
+def mean_baseline(sf, data, stim_time, pre_stim=100):
     '''
     Find the mean baseline in a given time series
     Parameters
     ----------
+    sf: int or float
+        The sampling frequency in kHz.
     data: pandas.Series or pandas.DataFrame
         The time series data for which you want a baseline.
     stim_time: int or float
         The time in ms when stimulus is triggered.
     pre_stim: int or float
         Time in ms before the stimulus trigger over which baseline is measured.
-    sf: int or float
-        The sampling frequency in kHz.
 
     Returns
     -------
@@ -54,7 +91,7 @@ def mean_baseline(data, stim_time, pre_stim=100, sf=10):
     return baseline
 
 
-def std_baseline(data, stim_time, pre_stim=100, sf=10):
+def std_baseline(sf, data, stim_time, pre_stim=100):
     '''
     Find the baseline st. dev. in a given time series
     Parameters
@@ -81,7 +118,7 @@ def std_baseline(data, stim_time, pre_stim=100, sf=10):
     return std
 
 
-def epsc_peak(data, baseline, stim_time, polarity='-', post_stim=50, sf=10):
+def epsc_peak(sf, data, baseline, stim_time, polarity='-', post_stim=100):
     '''
     Find the peak EPSC value for a pandas.Series or for each sweep (column) of
     a pandas.DataFrame. This finds the absolute peak value of mean baseline
@@ -89,6 +126,8 @@ def epsc_peak(data, baseline, stim_time, polarity='-', post_stim=50, sf=10):
 
     Parameters:
     -----------
+    sf: int or float
+        The sampling frequency in kHz. Default is 10 kHz.
     data: pandas.Series or pandas.DataFrame
         Time series data with stimulated synaptic response triggered at the
         same time for each sweep.
@@ -102,8 +141,7 @@ def epsc_peak(data, baseline, stim_time, polarity='-', post_stim=50, sf=10):
     post_stim: int or float
         Time in ms that marks the end of the sampling window post stimulus.
         Default is 100 ms.
-    sf: int or float
-        The sampling frequency in kHz. Default is 10 kHz.
+
 
     Returns
     -------
@@ -119,129 +157,185 @@ def epsc_peak(data, baseline, stim_time, polarity='-', post_stim=50, sf=10):
     if polarity == '-':
         epsc_peaks = peak_window.min()
     elif polarity == '+':
-        epsc_peaks = peak_window.max()
+        epsc_peaks =peak_window.max()
     else:
         raise ValueError(
             "polarity must either be + or -"
-        )
+        )    
 
     return epsc_peaks
+
+def create_data_notes(timepoint, summary_file, ibw_file_paths):
+    '''
+    Create data_notes summary spreadsheets
+    
+    Parameters
+    ----------
+    timepoint: str
+        Name of the injection timepoint used in the analysis
+    summary_file: .csv file
+        Manually-generated summary file of all cells in the dataset of a timepoint
+    ibw_file_paths:  list
+        List of ibw files found for a timepoint
+
+    Returns:
+    file_name_list: list
+        List of all the file names in the timepoint data set
+    data_notes: pandas.DataFrame
+        DataFrame of parsed notes for each cell from manually-inputted summary_file
+    '''
+    # Open the notes spreadsheet and parse for what we want to analyze ## '''
+    # open metadata file
+    data_notes = pd.read_csv(os.path.join(paths.tables, summary_file))
+
+    # pull out cell_id for directory, file name, and make the full path
+    file_name_list = data_notes['Cell name'].tolist()
+
+    data_notes = pd.concat([pd.DataFrame({'File Path': ibw_file_paths}), 
+        data_notes], axis=1)
+
+    light_data_notes = data_notes[data_notes['Cell name'].str.contains("light")]
+    spontaneous_data_notes = data_notes[data_notes['Cell name'].str.contains("spontaneous")]
+
+    # data_notes.to_csv(os.path.join(paths.tables, '{}_data_notes.csv'.format(timepoint)))
+    # light_data_notes.to_csv(os.path.join(paths.tables, '{}_light_data_notes.csv'.format(timepoint)))
+    # spontaneous_data_notes.to_csv(os.path.join(paths.tables, '{}_spontaneous_data_notes.csv'.format(timepoint)))
+
+    return file_name_list, data_notes
+
+def cell_response_checker(timepoint, file_name_list, data_dir, sf=25):
+    responses_df = pd.DataFrame()
+
+    for file in file_name_list:
+        metadata = get_metadata(file, data_notes)
+        file_path = metadata['Cell Path'][0]
+        cell_id = metadata['Cell ID'][0]
+        cell_type = metadata['Cell Type'][0]
+        condition = metadata['Condition'][0]
+
+        # open igor file and convert to pandas
+        data = igor_to_pandas(file_path, data_dir)
+
+        '''
+            Pull out EPSC peak from unfiltered signals
+            Baseline 100 ms preceding blue light
+            Peak within 250 ms of blue light
+        '''
+
+        baseline = mean_baseline(sf=25, data=data, stim_time=500)
+        peaks = epsc_peak(sf=25, data=data, baseline=baseline, stim_time=500, post_stim=150)
+
+        '''
+            Pull out EPSC peaks from filtered signals
+            Baseline 100 ms preceding blue light
+            Peak within 250 ms of blue light
+        '''
+
+        # filter signal with butterworth filter at 500 Hz for data
+        filt_data = elephant.signal_processing.butter(data.T,
+                                                    lowpass_freq=500.0,
+                                                    fs=10000.0)
+        filt_data = pd.DataFrame(filt_data).T
+
+        filt_baseline = mean_baseline(sf=sf, data=filt_data, stim_time=500)
+        filt_baseline_std = std_baseline(sf=sf, data=filt_data, stim_time=500)
+        filt_peaks = epsc_peak(sf=sf, data=filt_data, baseline=filt_baseline, stim_time=500, post_stim=150)
+
+
+        # make binary choice of whether the response is more than 3x std
+        mean_std = filt_baseline_std.mean()
+        mean_peaks = filt_peaks.mean()
+
+        response_2x = abs(mean_peaks) > mean_std * 2
+        response_3x = abs(mean_peaks) > mean_std * 3
+
+        responses = pd.DataFrame({'Cell name': file,
+                                'Mean Peaks (pA)': mean_peaks,
+                                'Mean STD (pA)': mean_std,
+                                'Response 2x STD': response_2x,
+                                'Response 3x STD': response_3x,
+                                },
+                                index=range(1))
+
+        responses_df = pd.concat([responses_df, responses], ignore_index=True)
+    return responses_df
 
 
 ''' *********************************************************************** '''
 
 ''' ################## Define file structure on server #################### '''
-# home_dir will depend on the OS, but the rest will not
-# query machine identity and set home_dir from there
-machine = platform.uname()[0]
+class file_structure:
+    def __init__(self, location, project_path):
+        '''
+        Creates an object with paths as attributes:
+        location:   str value 'local' or 'server' only, refers to where you are
+                    doing the actual work, 'local' by default.
+        project_path:   str of the root project path from wherever your home dir is
+        '''
+        machine = platform.uname()[0]
 
-if machine == 'Darwin':
-    home_dir = '/Volumes/Urban'
+        if location == 'local':
+            if machine == 'Darwin':
+                home_dir = '/Volumes/Urban'
 
-elif machine == 'Linux':
-    home_dir = '/run/user/1000/gvfs/smb-share:server=130.49.237.41,share=urban'
+            elif machine == 'Linux':
+                home_dir = os.path.join(os.path.expanduser('~'), 'urban/neurobio/Huang')
 
-elif machine == 'Windows':
-    home_dir = r"N:\urban\Huang"
+            elif machine == 'Windows':
+                home_dir = r"C:\Users\jhuang\Documents\phd_projects"
 
-else:
-    print("OS not recognized. \nPlease see Nate for correction.")
+            else:
+                print("OS not recognized. \nPlease see Nate for correction.")
 
-project_dir = os.path.join(home_dir, 'Injected_GC_data', 'New_VC_pairs')
-figure_dir = os.path.join(project_dir, 'figures')
-table_dir = os.path.join(project_dir, 'tables')
-data_dir = os.path.join(project_dir, 'data')
+        elif location == 'server':
+            if machine == 'Darwin':
+                home_dir = '/Volumes/Urban'
 
-''' ## Open the notes spreadsheet and parse for what we want to analyze ## '''
-# open metadata file
-allcells_data_notes = pd.read_csv(os.path.join(table_dir, 'MC_TC_summary.csv'))
+            elif machine == 'Linux':
+                home_dir = os.path.join(os.path.expanduser('~'), 'urban/neurobio/Huang')
 
-# pull out cell_id for directory, file name, and make the full path
-file_name_list = allcells_data_notes['Cell name'].tolist()
-cell_id_list = []
+            elif machine == 'Windows':
+                home_dir = r"N:\Huang"
 
-for file in file_name_list:
-    file_split = file.split('_')
-    cell_id = file_split[0]+'_'+file_split[1]
-    cell_id_list.append(cell_id)
+            else:
+                print("OS not recognized. \nPlease see Nate for correction.")
 
-file_path_list = []
+        self.project = os.path.join(home_dir, project_path)
+        self.figures = os.path.join(self.project, 'figures')
+        self.tables = os.path.join(self.project, 'tables')
+        self.p2 = os.path.join(self.project, 'data/p2')
+        self.p2_files = os.listdir(self.p2)
+        self.p14 = os.path.join(self.project, 'data/p14')
+        self.p14_files = os.listdir(self.p14)
 
-for cell, file in zip(cell_id_list, file_name_list):
-    file_path = os.path.join(file + '.ibw')
-    file_path_list.append(file_path)
+    def __repr__(self):
+        return 'Project file structure and file lists for {}'.format(self.project)
 
-allcells_data_notes = pd.concat([pd.DataFrame({'File Path': file_path_list}), 
-    allcells_data_notes], axis=1)
-light_data_notes = allcells_data_notes[allcells_data_notes['Cell name'].str.contains("light")]
-spontaneous_data_notes = allcells_data_notes[allcells_data_notes['Cell name'].str.contains("spontaneous")]
+paths = file_structure('local', 'Injected_GC_data/VC_pairs')
 
-allcells_data_notes.to_csv(os.path.join(table_dir, 'allcells_data_notes.csv'))
-light_data_notes.to_csv(os.path.join(table_dir, 'light_data_notes.csv'))
-spontaneous_data_notes.to_csv(os.path.join(table_dir, 'spontaneous_data_notes.csv'))
+# analysis for p2 data set
+# Parameters (sampling frequency = 25 kHz, data collected as pA, test pulse is +10 mV jump
+#                  and starts at t = 5 ms)
+ 
+file_name_list, data_notes = create_data_notes('p2', 'p2_MC_TC_summary.csv', paths.p2_files)
+responses_df = cell_response_checker('p2', file_name_list, paths.p2, sf=25)
 
-''' ##########################################################################
-This is all the analysis, figures, saving
-Read in file metadata, open file from igor, convert to pandas
-##############################################################################
-'''
-# make empty lists for response answers for each file
-responses_df = pd.DataFrame()
-
-# loop through all the files in file_name_list for plots and saving
-for file_name, file_path in zip(file_name_list, file_path_list):
-    # set file name from list
-    file = file_name
-
-    # open igor file and convert to pandas
-    data = igor_to_pandas(file_path, data_dir)
-
-    '''
-        Pull out EPSC peak from unfiltered signals
-        Baseline 100 ms preceding blue light
-        Peak within 250 ms of blue light
-    '''
-
-    baseline = mean_baseline(data, 500)
-    peaks = epsc_peak(data, baseline, 500)
-
-    '''
-        Pull out EPSC peaks from filtered signals
-        Baseline 100 ms preceding blue light
-        Peak within 250 ms of blue light
-    '''
-
-    # filter signal with butterworth filter at 500 Hz for data
-    filt_data = elephant.signal_processing.butter(data.T,
-                                                  lowpass_freq=500.0,
-                                                  fs=10000.0)
-    filt_data = pd.DataFrame(filt_data).T
-
-    filt_baseline = mean_baseline(filt_data, 500)
-    filt_baseline_std = std_baseline(filt_data, 500)
-    filt_peaks = epsc_peak(filt_data, filt_baseline, 500)
-
-    # make binary choice of whether the response is more than 3x std
-    mean_std = filt_baseline_std.mean()
-    mean_peaks = filt_peaks.mean()
-
-    response_2x = abs(mean_peaks) > mean_std * 2
-    response_3x = abs(mean_peaks) > mean_std * 3
-
-    responses = pd.DataFrame({'Cell name': file_name,
-                              'Mean Peaks (nA)': mean_peaks,
-                              'Mean STD (nA)': mean_std,
-                              'Response 2x STD': response_2x,
-                              'Response 3x STD': response_3x,
-                              },
-                              index=range(1))
-
-    responses_df = pd.concat([responses_df, responses], ignore_index=True)
-
-# save responses as csv
-responses_df.to_csv(os.path.join(table_dir, 'responses.csv'))
 
 # merge with data_notes and save
-responses_data_notes = pd.merge(allcells_data_notes, responses_df)
-responses_data_notes.to_csv(os.path.join(table_dir, 'responses_data_notes.csv'),
+responses_data_notes = pd.merge(data_notes, responses_df)
+responses_data_notes.to_csv(os.path.join(paths.tables, 'p2_responses_data_notes.csv'),
+                            float_format='%8.4f', index=False)
+
+
+# analysis for p14 data set
+# Parameters (sampling frequency = 10 kHz, data collected as nA, test pulse is -5 mV jump
+#                  and starts at t = 50 ms)
+ 
+file_name_list, data_notes = create_data_notes('p14', 'p14_MC_TC_summary.csv', paths.p14_files)
+responses_df = cell_response_checker('14', file_name_list, paths.p14, sf=10)
+
+
+# merge with data_notes and save
+responses_data_notes = pd.merge(data_notes, responses_df)
+responses_data_notes.to_csv(os.path.join(paths.tables, 'p14_responses_data_notes.csv'),
                             float_format='%8.4f', index=False)
