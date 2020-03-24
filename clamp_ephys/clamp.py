@@ -70,7 +70,7 @@ def std_baseline(fs, data, stim_time, pre_stim=100):
     return std
 
 
-def epsc_peak(data, baseline, fs, polarity='-', stim_time, post_stim=100):
+def epsc_peak(data, baseline, fs, stim_time, post_stim=100, polarity='-'):
     '''
     Find the peak EPSC value for a pandas.Series or for each sweep (column) of
     a pandas.DataFrame. This finds the absolute peak value of mean baseline
@@ -119,16 +119,16 @@ def epsc_peak(data, baseline, fs, polarity='-', stim_time, post_stim=100):
     return epsc_peaks
 
 
-def series_resistance(fs, data, tp_start=5, vm_jump=10, pre_tp=3, peak_factor=-12):
+def series_resistance(data, fs, tp_start=5, vm_jump=10, pre_tp=3, unit_scaler=-12):
     '''
     Calculate the approximate series resistance (Rs) from a test pulse (tp).
 
     Parameters
     ----------
-    fs: int or float
-        Sampling frequency in kHz. Default is 10 kHz.
     data: pandas.Series or pandas.DataFrame
         Raw time series daata of the v-clamp recording in nA.
+    fs: int or float
+        Sampling frequency in kHz.
     tp_start: int or float
         Time in ms when test pulse begins. Default is 5.
     vm_jump: int or float
@@ -136,8 +136,8 @@ def series_resistance(fs, data, tp_start=5, vm_jump=10, pre_tp=3, peak_factor=-1
         This is 10 mV in MIES and -5 in Nathan's Igor program.
     pre_tp: int or float
         Time in ms before start of test pulse by which to measure the baseline.
-    peak_factor: int or float
-        Factor to multiply rs_peak by to get pA. Default is -12.
+    unit_scaler: int or float
+        Scaling factor to convert reported current as Amp; e.g. if units are in pA value is -12.
 
     Returns:
     rs: pandas.Series of float

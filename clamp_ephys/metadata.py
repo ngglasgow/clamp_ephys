@@ -3,7 +3,7 @@ import pandas as pd
 import os
 
 
-def get_metadata(file, data_notes):
+def get_metadata(file, data_path):
     '''Takes a filename and parses it for metadata, and returns metadata in an
     orderedDict as a pandas DataFrame for saving later
     Also takes information from the cell spreadsheet in data_notes'''
@@ -20,7 +20,8 @@ def get_metadata(file, data_notes):
         condition = 'spontaneous'
 
     # grab metadata from data notes spreadsheet
-    file_data = data_notes[data_notes['Cell name'] == file]
+    data_notes = pd.read_csv(data_path, index_col=[0])
+    file_data = data_notes[data_notes['File Path'] == file]
     cell_path = file_data['File Path'].tolist()[0]
     cell_type = file_data['Cell Type'].tolist()[0]
 

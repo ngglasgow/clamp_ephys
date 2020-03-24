@@ -2,20 +2,54 @@ from . import clamp
 from . import metadata
 from . import responses
 import elephant
+import pandas as pd
 
 class cell:
-    def __init__(self, path_to_file, fs, data_notes):
+    def __init__(self, path_to_file, fs, path_to_data_notes):
         self.filepath = path_to_file
         self.filename = self.filepath.split('/')[-1]
         self.fs = fs
-        self.data_notes = data_notes
+        self.notes_path = path_to_data_notes
 
         self.traces = clamp.igor_to_pandas(self.filepath)
-        self.metadata = metadata.get_metadata(self.filename, self.data_notes)
+        self.metadata = metadata.get_metadata(self.filename, self.notes_path)
 
 
-    def filter_traces(self, lowpass_freq)
-        filtered_traces = elephant.signal_processing.butter(self.traces.T, lowpass_freq=lowpass_freq, fs = )
+    def filter_traces(self, lowpass_freq):
+        '''
+        add filtered traces attrbute to data object
+        lowpass_freq: frequency in Hz to pass to elephant filter
+        '''
+        filtered_traces = elephant.signal_processing.butter(self.traces.T, lowpass_freq=lowpass_freq, fs=self.fs * 1000)
+        self.filtered_traces = pd.DataFrame(filtered_traces).T
+
+
+    def get_raw_peaks(self, stim_time, post_stim, polarity='-', pre_stim=100):
+        '''
+        Finds the baseline and peaks of the raw traces based on passthrough arguments to clamp.
+        adds peaks_raw attribute to data object: pandas.Series
+        '''
+        baseline = clamp.mean_baseline(self.traces, self.fs, stim_time, pre_stim)
+        self.peaks_raw = clamp.epsc_peak(self.traces, baseline, self.fs, stim_time, post_stim, polarity)
+
+
+    def get_filtered_peaks(self, stim_time, post_stim, polarity='-', pre_stim=100):
+        '''
+        Finds the baseline and peaks of the filtered traces thorugh passthrough arguments to clamp.
+        adds peaks_filtered attribute to data object: pandas.Series
+        '''
+        baseline = clamp.mean_baseline(self.filtered_traces, self.fs, stim_time, pre_stim)
+        self.peaks_filtered = clamp.epsc_peak(self.filtered_traces, baseline, self.fs, stim_time, post_stim, polarity)
+
+    
+    def get_series_resistance(self, tp_start, vm_jump, pre_tp, unit_scaler):
+        '''
+        Finds the series resistance of raw traces with passthrough arguments to clamp.
+        adds rs attribute to data object: pandas.Series of float in MOhms
+        '''
+        self.rs = clamp.series_resistance(self.traces, self.fs, tp_start, vm_jump, pre_tp, unit_scaler)
+
+
     def __repr__(self):
         return 'Data object for a single cell {}'.format(self.filename)
         
@@ -56,39 +90,7 @@ def indiv_cell_analysis(timepoint, file, data_dir, sf=25, amp_factor=1, peak_fac
     cell_type = metadata['Cell Type'][0]
     condition = metadata['Condition'][0]
 
-    # open igor file and convert to pandas
-    data = igor_to_pandas(file_path, data_dir)
-
-    '''
-        Pull out EPSC peak from unfiltered signals
-        Baseline 100 ms preceding blue light
-        Blue light comes on at 500 ms
-        Peak within 250 ms of blue light
-    
-    '''
-    baseline = mean_baseline(sf, data, 500)
-    peaks = epsc_peak(sf, data, baseline, stim_time=500, post_stim=250)
-    
-
-    '''
-        Pull out EPSC peaks from FILTERED signals
-        Baseline 100 ms preceding blue light
-        Blue light comes on at 500 ms
-        Peak within 250 ms of blue light
-    '''
-
-    # filter signal with butterworth filter at 500 Hz for data
-    filt_data = elephant.signal_processing.butter(data.T,
-                                                lowpass_freq=500.0,
-                                                fs=10000.0)
-    filt_data = pd.DataFrame(filt_data).T
-
-    filt_baseline = mean_baseline(sf=sf, data=filt_data, stim_time=500)
-    filt_peaks = epsc_peak(sf, filt_data, filt_baseline, stim_time=500, post_stim=250)
-
-    ''' Calculating Series Resistance (rs) from test pulse (tp) '''
-    rs = series_resistance(sf, data, tp_start, vm_jump, pre_tp, peak_factor)
-
+   
     ''' Plot EPSC peaks and Rs over time of experiemnt '''
     # set up index markers for data | drug line and drug stimuli
     # pull out number of sweeps for both conditions and all
