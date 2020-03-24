@@ -4,12 +4,11 @@ import pandas as pd
 from neo.io import IgorIO
 
 
-def igor_to_pandas(data_dir, file):
+def igor_to_pandas(path_to_file):
     '''This function opens an igor binary file (.ibw), extracts the time
     series data, and returns a pandas DataFrame'''
 
-    file_path = os.path.join(data_dir, file)
-    data_raw = IgorIO(filename=file_path)
+    data_raw = IgorIO(filename=path_to_file)
     data_neo = data_raw.read_block()
     data_neo_array = data_neo.segments[0].analogsignals[0]
     data_df = pd.DataFrame(data_neo_array.as_array().squeeze())

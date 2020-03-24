@@ -1,4 +1,18 @@
+from . import clamp
+from . import metadata
+from . import responses
 
+class cell:
+    def __init__(self, path_to_file, sf):
+        self.filepath = path_to_file
+        self.filename = self.filepath.split('/')[-1]
+        self.sf = sf
+
+        self.traces = clamp.igor_to_pandas(path_to_file)
+
+    def __repr__(self):
+        return 'Data object for a single cell {}'.format(self.filename)
+        
 
 def indiv_cell_analysis(timepoint, file, data_dir, sf=25, amp_factor=1, peak_factor=-12,
                          tp_start=5, vm_jump=10, pre_tp=3):
