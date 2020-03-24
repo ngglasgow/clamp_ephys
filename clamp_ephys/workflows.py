@@ -1,15 +1,21 @@
 from . import clamp
 from . import metadata
 from . import responses
+import elephant
 
 class cell:
-    def __init__(self, path_to_file, sf):
+    def __init__(self, path_to_file, fs, data_notes):
         self.filepath = path_to_file
         self.filename = self.filepath.split('/')[-1]
-        self.sf = sf
+        self.fs = fs
+        self.data_notes = data_notes
 
-        self.traces = clamp.igor_to_pandas(path_to_file)
+        self.traces = clamp.igor_to_pandas(self.filepath)
+        self.metadata = metadata.get_metadata(self.filename, self.data_notes)
 
+
+    def filter_traces(self, lowpass_freq)
+        filtered_traces = elephant.signal_processing.butter(self.traces.T, lowpass_freq=lowpass_freq, fs = )
     def __repr__(self):
         return 'Data object for a single cell {}'.format(self.filename)
         

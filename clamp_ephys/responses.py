@@ -1,8 +1,8 @@
 
 
-def cell_response_checker(data, sf, stim_time, baseline, post_stim):
-    baseline = mean_baseline(sf=25, data=data, stim_time=500)
-    peaks = epsc_peak(sf=25, data=data, baseline=baseline, stim_time=500, post_stim=150)
+def cell_response_checker(data, fs, stim_time, baseline, post_stim):
+    baseline = mean_baseline(fs=25, data=data, stim_time=500)
+    peaks = epsc_peak(fs=25, data=data, baseline=baseline, stim_time=500, post_stim=150)
 
     '''
         Pull out EPSC peaks from filtered signals
@@ -16,9 +16,9 @@ def cell_response_checker(data, sf, stim_time, baseline, post_stim):
                                                 fs=10000.0)
     filt_data = pd.DataFrame(filt_data).T
 
-    filt_baseline = mean_baseline(sf=sf, data=filt_data, stim_time=500)
-    filt_baseline_std = std_baseline(sf=sf, data=filt_data, stim_time=500)
-    filt_peaks = epsc_peak(sf=sf, data=filt_data, baseline=filt_baseline, stim_time=500, post_stim=150)
+    filt_baseline = mean_baseline(fs=fs, data=filt_data, stim_time=500)
+    filt_baseline_std = std_baseline(fs=fs, data=filt_data, stim_time=500)
+    filt_peaks = epsc_peak(fs=fs, data=filt_data, baseline=filt_baseline, stim_time=500, post_stim=150)
 
 
     # make binary choice of whether the response is more than 3x std
