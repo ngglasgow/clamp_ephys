@@ -158,6 +158,6 @@ def series_resistance(data, fs, tp_start=5, vm_jump=10, pre_tp=3, unit_scaler=-1
         rs_peak = rs_window.min()
 
     # calculate Rs via V=IR -> Rs = V/I
-    rs = ((vm_jump * 10**-3) / (rs_peak * 10**peak_factor)) * 10**-6
+    rs = ((vm_jump * 10**-3) / (rs_peak * 10**unit_scaler)) * 10**-6
 
     return rs

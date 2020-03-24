@@ -3,6 +3,8 @@ from . import metadata
 from . import responses
 import elephant
 import pandas as pd
+import matplotlib.pyplot as plt
+import numpy as np
 
 class cell:
     def __init__(self, path_to_file, fs, path_to_data_notes):
@@ -29,8 +31,8 @@ class cell:
         Finds the baseline and peaks of the raw traces based on passthrough arguments to clamp.
         adds peaks_raw attribute to data object: pandas.Series
         '''
-        baseline = clamp.mean_baseline(self.traces, self.fs, stim_time, pre_stim)
-        self.peaks_raw = clamp.epsc_peak(self.traces, baseline, self.fs, stim_time, post_stim, polarity)
+        self.baseline_raw = clamp.mean_baseline(self.traces, self.fs, stim_time, pre_stim)
+        self.peaks_raw = clamp.epsc_peak(self.traces, self.baseline_raw, self.fs, stim_time, post_stim, polarity)
 
 
     def get_filtered_peaks(self, stim_time, post_stim, polarity='-', pre_stim=100):
@@ -38,8 +40,8 @@ class cell:
         Finds the baseline and peaks of the filtered traces thorugh passthrough arguments to clamp.
         adds peaks_filtered attribute to data object: pandas.Series
         '''
-        baseline = clamp.mean_baseline(self.filtered_traces, self.fs, stim_time, pre_stim)
-        self.peaks_filtered = clamp.epsc_peak(self.filtered_traces, baseline, self.fs, stim_time, post_stim, polarity)
+        self.baseline_filtered = clamp.mean_baseline(self.filtered_traces, self.fs, stim_time, pre_stim)
+        self.peaks_filtered = clamp.epsc_peak(self.filtered_traces, self.baseline_filtered, self.fs, stim_time, post_stim, polarity)
 
     
     def get_series_resistance(self, tp_start, vm_jump, pre_tp, unit_scaler):
@@ -48,6 +50,95 @@ class cell:
         adds rs attribute to data object: pandas.Series of float in MOhms
         '''
         self.rs = clamp.series_resistance(self.traces, self.fs, tp_start, vm_jump, pre_tp, unit_scaler)
+
+
+    def plot_peaks_rs(self, amp_factor, timepoint):
+        file_path = self.metadata['Cell Path'][0]
+        cell_id = self.metadata['Cell ID'][0]
+        cell_type = self.metadata['Cell Type'][0]
+        condition = self.metadata['Condition'][0]
+
+        # set up index markers for data | drug line and drug stimuli
+        # pull out number of sweeps for both conditions and all
+        n_control_sweeps = len(self.peaks_filtered)
+
+        # set up auto y max for peak plots (min since negative)
+        y_min = self.peaks_filtered.min()
+        y_min_lim = y_min * 1.15 * amp_factor
+
+        # set up logic for Rs y scaling: if < 20 MOhms, don't scale, if > scale
+        if self.rs.max() <= 20:
+            rs_y_min = 0
+            rs_y_max = 20
+        else:
+            rs_y_min = self.rs.min() * 0.5
+            rs_y_max = self.rs.max() * 1.2
+        
+        # make a figure with 2 plots
+        fig, axs = plt.subplots(2, 2, figsize=(6, 6), constrained_layout=True)
+        fig.suptitle('Summary for ' + timepoint + ' ' + cell_type + ' ' + cell_id + ' ' + condition)
+
+        # optional for plotting unfiltered on same graph for comparison
+        axs[0, 0].plot(self.peaks_raw*amp_factor, marker='.', color='darkgray', linestyle='', label='raw')
+
+        # plot the filterd peak currents NOTE: convert peak values to pA
+        axs[0, 0].plot(self.peaks_filtered*amp_factor, color='k', marker='.', linestyle='', label='filtered')
+        axs[0, 0].set_xlabel('Stimulus Number')
+        axs[0, 0].set_ylabel('EPSC Peak (pA)')
+        axs[0, 0].set_ylim(0, y_min_lim)
+        axs[0, 0].legend()
+
+        # plot the series resistance values
+        axs[0, 1].plot(self.rs, marker='.', color='k', linestyle='')
+        axs[0, 1].set_xlabel('Stimulus Number')
+        axs[0, 1].set_ylabel('Rs (MOhm)')
+        axs[0, 1].set_ylim(rs_y_min, rs_y_max)
+
+        ''' Plot averaged EPSC trace overlaying all the individual traces '''
+        # calculate the mean and the SEM of the entire time series
+        filt_subtracted = self.filtered_traces - self.baseline_filtered
+        filt_data_mean = filt_subtracted.mean(axis=1)
+        filt_data_sem = filt_subtracted.sem(axis=1)
+        filt_data_std = filt_subtracted.std(axis=1)
+
+        # calculate auto y min limit for mean + std
+        mean_std = (filt_data_mean - filt_data_std)
+        y_min_mean_std = mean_std[5000:].min()
+        y_min_mean_lim = y_min_mean_std * 1.1 * amp_factor
+
+        # set up time value for length of traces and window of what to plot
+        sweep_length = len(self.traces)                  # allow for different sweep length
+        sweep_time = np.arange(0, sweep_length/self.fs, 1/self.fs)     # time of sweeps in ms
+
+        # set up length of line for light stimulation
+        blue_start = 500    # ms, time blue light comes on
+        blue_stop = 550     # ms, time blue light turns off
+
+        # plot mean data trace with all traces in gray behind
+        axs[1, 0].plot(sweep_time, filt_subtracted*amp_factor, color='darkgray', linewidth=0.5)
+        axs[1, 0].plot(sweep_time, filt_data_mean*amp_factor, color='k')
+        axs[1, 0].hlines(75, blue_start, blue_stop, color='deepskyblue')
+        axs[1, 0].set_xlabel('Time (ms)')
+        axs[1, 0].set_ylabel('Current (pA)')
+        axs[1, 0].set_xlim(450, 1000)
+        axs[1, 0].set_ylim(y_min_lim, 100)
+
+        # plot mean data trace with shaded SEM gray behind
+        axs[1, 1].plot(sweep_time, filt_data_mean*amp_factor, color='k', label='mean')
+        axs[1, 1].fill_between(sweep_time,
+                            (filt_data_mean - filt_data_std) * amp_factor,
+                            (filt_data_mean + filt_data_std) * amp_factor,
+                            color='darkgray',
+                            label='st. dev.')
+        axs[1, 1].hlines(75, blue_start, blue_stop, color='deepskyblue')
+        axs[1, 1].set_xlabel('Time (ms)')
+        axs[1, 1].set_ylabel('Current (pA)')
+        axs[1, 1].set_xlim(450, 1000)
+        axs[1, 1].set_ylim(y_min_mean_lim, 100)
+        axs[1, 1].legend(loc=1)
+
+        return fig
+
 
 
     def __repr__(self):
@@ -82,97 +173,7 @@ def indiv_cell_analysis(timepoint, file, data_dir, sf=25, amp_factor=1, peak_fac
         Time in ms before start of test pulse by which to measure the baseline.
 
     '''
-       
-    # gather metadata and set some key parameters for use later on in loop
-    metadata = get_metadata(file, data_notes)
-    file_path = metadata['Cell Path'][0]
-    cell_id = metadata['Cell ID'][0]
-    cell_type = metadata['Cell Type'][0]
-    condition = metadata['Condition'][0]
-
-   
-    ''' Plot EPSC peaks and Rs over time of experiemnt '''
-    # set up index markers for data | drug line and drug stimuli
-    # pull out number of sweeps for both conditions and all
-    n_control_sweeps = len(peaks)
-
-    # set up auto y max for peak plots (min since negative)
-    y_min = peaks.min()
-    y_min_lim = y_min * 1.15 * amp_factor
-
-    # set up logic for Rs y scaling: if < 20 MOhms, don't scale, if > scale
-    if rs.max() <= 20:
-        rs_y_min = 0
-        rs_y_max = 20
-    else:
-        rs_y_min = rs.min() * 0.5
-        rs_y_max = rs.max() * 1.2
-
-    # make a figure with 2 plots
-    fig, axs = plt.subplots(2, 2, figsize=(6, 6), constrained_layout=True)
-    fig.suptitle('Summary for ' + timepoint + ' ' + cell_type + ' ' + cell_id + ' ' + condition)
-
-    # optional for plotting unfiltered on same graph for comparison
-    axs[0, 0].plot(peaks*amp_factor, marker='.', color='darkgray', linestyle='', label='raw')
-
-    # plot the filterd peak currents NOTE: convert peak values to pA
-    axs[0, 0].plot(filt_peaks*amp_factor, color='k', marker='.', linestyle='', label='filtered')
-    axs[0, 0].set_xlabel('Stimulus Number')
-    axs[0, 0].set_ylabel('EPSC Peak (pA)')
-    axs[0, 0].set_ylim(0, y_min_lim)
-    axs[0, 0].legend()
-
-    # plot the series resistance values
-    axs[0, 1].plot(rs, marker='.', color='k', linestyle='')
-    axs[0, 1].set_xlabel('Stimulus Number')
-    axs[0, 1].set_ylabel('Rs (MOhm)')
-    axs[0, 1].set_ylim(rs_y_min, rs_y_max)
-
-    ''' Plot averaged EPSC trace overlaying all the individual traces '''
-    # calculate the mean and the SEM of the entire time series
-    filt_subtracted = filt_data - filt_baseline
-    filt_data_mean = filt_subtracted.mean(axis=1)
-    filt_data_sem = filt_subtracted.sem(axis=1)
-    filt_data_std = filt_subtracted.std(axis=1)
-
-    # calculate auto y min limit for mean + std
-    mean_std = (filt_data_mean - filt_data_std)
-    y_min_mean_std = mean_std[5000:].min()
-    y_min_mean_lim = y_min_mean_std * 1.1 * amp_factor
-
-    # set up time value for length of traces and window of what to plot
-    sweep_length = len(data)                  # allow for different sweep length
-    sweep_time = np.arange(0, sweep_length/sf, 1/sf)     # time of sweeps in ms
-
-    # set up length of line for light stimulation
-    blue_light = np.arange(500, 550, 1/sf)
-
-    # plot mean data trace with all traces in gray behind
-    axs[1, 0].plot(sweep_time, filt_subtracted*amp_factor, color='darkgray', linewidth=0.5)
-    axs[1, 0].plot(sweep_time, filt_data_mean*amp_factor, color='k')
-    axs[1, 0].hlines(75, 500, 550, color='deepskyblue')
-    axs[1, 0].set_xlabel('Time (ms)')
-    axs[1, 0].set_ylabel('Current (pA)')
-    axs[1, 0].set_xlim(450, 1000)
-    axs[1, 0].set_ylim(y_min_lim, 100)
-
-    # plot mean data trace with shaded SEM gray behind
-    axs[1, 1].plot(sweep_time, filt_data_mean*amp_factor, color='k', label='mean')
-    axs[1, 1].fill_between(sweep_time,
-                        (filt_data_mean - filt_data_std) * amp_factor,
-                        (filt_data_mean + filt_data_std) * amp_factor,
-                        color='darkgray',
-                        label='st. dev.')
-    axs[1, 1].hlines(75, 500, 550, color='deepskyblue')
-    axs[1, 1].set_xlabel('Time (ms)')
-    axs[1, 1].set_ylabel('Current (pA)')
-    axs[1, 1].set_xlim(450, 1000)
-    axs[1, 1].set_ylim(y_min_mean_lim, 100)
-    axs[1, 1].legend(loc=1)
-
-    # fig
-
-    # save figure to file
+    
 
     fig_save_path = os.path.join(paths.figures, timepoint, cell_type, condition, cell_id)
     fig.savefig(fig_save_path +  '_' + timepoint + '_' + cell_type + '_' + condition + '_summary.png', 

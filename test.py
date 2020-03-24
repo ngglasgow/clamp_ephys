@@ -15,5 +15,6 @@ unit_scaler = -12   # unitless, scaler to get back to A, from pA
 data.get_raw_peaks(stim_time, post_stim)
 data.filter_traces(lowpass_freq)
 data.get_filtered_peaks(stim_time, post_stim)
+data.get_series_resistance(tp_start, vm_jump, pre_tp, unit_scaler)
 
-
+data.plot_peaks_rs(amp_factor=1, timepoint='p2')
