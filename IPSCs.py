@@ -268,7 +268,7 @@ def indiv_cell_analysis(timepoint, file, data_dir, sf=25, amp_factor=1, peak_fac
         Pull out EPSC peak from unfiltered signals
         Baseline 100 ms preceding blue light
         Blue light comes on at 500 ms
-        Peak within 150 ms of blue light
+        Peak within 250 ms of blue light
     
     '''
     baseline = mean_baseline(sf, data, 500)
@@ -279,7 +279,7 @@ def indiv_cell_analysis(timepoint, file, data_dir, sf=25, amp_factor=1, peak_fac
         Pull out EPSC peaks from FILTERED signals
         Baseline 100 ms preceding blue light
         Blue light comes on at 500 ms
-        Peak within 150 ms of blue light
+        Peak within 250 ms of blue light
     '''
 
     # filter signal with butterworth filter at 500 Hz for data
