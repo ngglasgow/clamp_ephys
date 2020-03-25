@@ -75,3 +75,9 @@ def create_data_notes(timepoint, summary_file, ibw_file_paths):
     spontaneous_data_notes.to_csv(os.path.join(paths.tables, '{}_spontaneous_data_notes.csv'.format(timepoint)))
 
     return file_name_list, data_notes
+
+def check_create_dirs(path):
+    if os.path.exists(path) == True:
+        pass
+    else:
+        os.makedirs(path)

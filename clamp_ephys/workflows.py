@@ -6,6 +6,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 from collections import OrderedDict
+import os
+import platform
 
 class cell:
     def __init__(self, path_to_file, fs, path_to_data_notes, timepoint):
@@ -148,6 +150,24 @@ class cell:
         return fig
 
 
+    def save_fig(self, path_to_figures, figure):
+        '''
+        Saves the figure object to the path_to_figures
+        Parameters
+        ----------
+        path_to_figures: str
+            path to the figure directory
+        figure: plt.pyplot fig
+            figure object
+        '''
+        filename = '{}_{}_{}_{}_summary.png'.format(self.cell_id, self.timepoint, self.cell_type, self.condition)
+        base_path = os.path.join(path_to_figures, self.timepoint, self.cell_type, self.condition)
+        metadata.check_create_dirs(base_path)
+
+        path = os.path.join(base_path, filename)
+        figure.savefig(path, dpi=300, format='png')
+
+
     def save_metadata(self, path_to_tables):
         '''
         Takes the metadata, appends the sweep information and saves it
@@ -170,9 +190,12 @@ class cell:
         # join summary data with metadata
         sweep_meta_data = metadata_df.join(self.sweep_data)
 
-        sweep_meta_filename = '{}_{}_{}_{}_all_sweeps_data.csv'.format(self.cell_id, self.timepoint, self.cell_type, self.condition)
-        sweep_meta_path = os.path.join(path_to_tables, self.timepoint, self.cell_type, self.condition, sweep_meta_filename)
-        sweep_meta_data.to_csv(sweep_meta_path, float_format='%8.4f', index=False, header=True)
+        filename = '{}_{}_{}_{}_all_sweeps_data.csv'.format(self.cell_id, self.timepoint, self.cell_type, self.condition)
+        base_path = os.path.join(path_to_tables, self.timepoint, self.cell_type, self.condition)
+        metadata.check_create_dirs(base_path)
+
+        path = os.path.join(base_path, filename)
+        sweep_meta_data.to_csv(path, float_format='%8.4f', index=False, header=True)
 
 
     def save_mean_data(self, path_to_tables):
@@ -199,9 +222,12 @@ class cell:
         summary_data = pd.concat([summary_data, measures, n_sweeps], axis=1)
 
         # define path for saving file and save it
-        summary_filename = '{}_{}_{}_{}_summary_data.csv'.format(self.cell_id, self.timepoint, self.cell_type, self.condition)
-        summary_path = os.path.join(paths_to_tables, timepoint, cell_type, condition, summary_filename)
-        summary_data.to_csv(summary_path, float_format='%8.4f', index=False)
+        filename = '{}_{}_{}_{}_summary_data.csv'.format(self.cell_id, self.timepoint, self.cell_type, self.condition)
+        base_path = os.path.join(path_to_tables, self.timepoint, self.cell_type, self.condition)
+        metadata.check_create_dirs(base_path)
+
+        path = os.path.join(base_path, filename)
+        summary_data.to_csv(path, float_format='%8.4f', index=False)
 
 
     def save_mean_filtered_trace(self, path_to_tables):
@@ -214,7 +240,10 @@ class cell:
         '''
         mean_filtered_trace = self.traces_filtered.mean(axis=1)
         filename = '{}_{}_{}_{}_mean_timeseries.csv'.format(self.cell_id, self.timepoint, self.cell_type, self.condition)
-        path = os.path.join(path_to_tables, self.timepoint, self.cell_type, self.condition, filename)
+        base_path = os.path.join(path_to_tables, self.timepoint, self.cell_type, self.condition)
+        metadata.check_create_dirs(base_path)
+
+        path = os.path.join(base_path, filename)
         mean_filtered_trace.to_csv(path, float_format='%8.4f', index=False, header=False)
 
 
