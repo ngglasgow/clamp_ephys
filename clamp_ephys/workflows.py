@@ -183,9 +183,8 @@ class cell:
         self.sweep_data = pd.DataFrame(data_dict)
 
         # fill in n=sweeps of metadata_df so that can join with peaks for clean df
-        metadata_df = pd.DataFrame()
-        for i in range(len(self.peaks_raw)):
-            metadata_df = pd.concat([metadata_df, metadata], ignore_index=True)
+        metadata_df = pd.DataFrame(self.metadata, index=range(len(self.peaks_raw)))
+        metadata_df.fillna(method='ffill', inplace=True)
 
         # join summary data with metadata
         sweep_meta_data = metadata_df.join(self.sweep_data)

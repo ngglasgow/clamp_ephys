@@ -27,3 +27,11 @@ data.save_fig(figures, fig)
 data.save_metadata(tables)
 data.save_mean_data(tables)
 data.save_mean_filtered_trace(tables)
+
+data.metadata.join(data.sweep_data)
+import pandas as pd
+import numpy as np
+test_df = pd.DataFrame(data.metadata, index=range(30))
+
+data.metadata.repeat(30)
+test = data.metadata.values
