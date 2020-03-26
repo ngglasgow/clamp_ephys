@@ -43,7 +43,34 @@ def mean_baseline(data, fs, stim_time, pre_stim=100):
     return baseline
 
 
-def epsc_peak(data, baseline, fs, stim_time, post_stim=100, polarity='-'):
+def std_baseline(data, fs, stim_time):
+    '''
+    Find the mean baseline in a given time series
+    Parameters
+    ----------
+    data: pandas.Series or pandas.DataFrame
+        The time series data for which you want a baseline.
+    fs: int or float
+        The sampling frequency in kHz.
+    stim_time: int or float
+        The time in ms when stimulus is triggered.
+    pre_stim: int or float
+        Time in ms before the stimulus trigger over which baseline is measured.
+
+    Returns
+    -------
+    baseline: float or pandas.Series
+        The mean baseline over the defined window
+    '''
+    start = 100 * fs
+    stop = (stim_time - 1) * fs
+    window = data.iloc[start:stop]
+    std = window.std()
+
+    return std
+
+
+def epsc_peak(data, baseline, fs, stim_time, post_stim=100, polarity='-', index=False):
     '''
     Find the peak EPSC value for a pandas.Series or for each sweep (column) of
     a pandas.DataFrame. This finds the absolute peak value of mean baseline
@@ -67,12 +94,16 @@ def epsc_peak(data, baseline, fs, stim_time, post_stim=100, polarity='-'):
     post_stim: int or float
         Time in ms that marks the end of the sampling window post stimulus.
         Default is 100 ms.
+    index: bool
+        Determines whether or not to return the peak index in addition to the peak. 
 
 
     Returns
     -------
     epsc_peaks: pandas.Series
         The absolute peak of mean baseline subtracted time series data.
+    epsc_peak_index: int
+        The time at which the peak occurs
     '''
 
     subtracted_data = data - baseline
@@ -80,17 +111,30 @@ def epsc_peak(data, baseline, fs, stim_time, post_stim=100, polarity='-'):
     end = (stim_time + post_stim) * fs
     peak_window = subtracted_data.iloc[start:end]
 
-    if polarity == '-':
-        epsc_peaks = peak_window.min()
-    elif polarity == '+':
-        epsc_peaks =peak_window.max()
-    else:
-        raise ValueError(
-            "polarity must either be + or -"
-        )    
+    if index is True:
+        if polarity == '-':
+            epsc_peaks = peak_window.min()
+            epsc_peaks_index = peak_window.idxmin()
+        elif polarity == '+':
+            epsc_peaks = peak_window.max()
+            epsc_peaks_index = peak_window.idxmax()
+        else:
+            raise ValueError(
+                "polarity must either be + or -"
+            )    
+        return epsc_peaks, epsc_peaks_index
 
-    return epsc_peaks
-
+    elif index is False:
+        if polarity == '-':
+            epsc_peaks = peak_window.min()
+        elif polarity == '+':
+            epsc_peaks = peak_window.max()
+        else:
+            raise ValueError(
+                "polarity must either be + or -"
+            )    
+        return epsc_peaks
+        
 
 def series_resistance(data, fs, tp_start=5, vm_jump=10, pre_tp=3, unit_scaler=-12):
     '''

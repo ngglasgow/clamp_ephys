@@ -1,0 +1,2 @@
+Date,Cell ID,Cell Number,Cell Path,Condition,Cell Type,Response 2x STD,Response 3x STD,Response 5x STD,Raw SweepAvg Peak (pA),Raw SweepAvg Peak STD (pA),Raw SweepAvg Peak SEM (pA),Filtered SweepAvg Peak (pA),Filtered SweepAvg Peak STD (pA),Filtered SweepAvg Peak SEM (pA)
+2020-03-03,JH200303_c1,1,JH200303_c1_light100.ibw,light,MC,True,False,False,-24.9430, 19.7092,  3.5984, -5.5599, 19.9505,  3.6425

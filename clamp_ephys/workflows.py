@@ -16,6 +16,8 @@ class cell:
         self.notes_path = path_to_data_notes
 
         self.traces = clamp.igor_to_pandas(self.filepath)
+        self.mean_traces = self.traces.mean(axis=1)
+        self.time = np.arange(0, len(self.traces), 1000 / self.fs)
         self.metadata = metadata.get_metadata(self.filename, self.notes_path)
         self.cell_id = self.metadata['Cell ID'][0]
         self.condition = self.metadata['Condition'][0]
@@ -30,6 +32,7 @@ class cell:
         '''
         traces_filtered = elephant.signal_processing.butter(self.traces.T, lowpass_freq=lowpass_freq, fs=self.fs * 1000)
         self.traces_filtered = pd.DataFrame(traces_filtered).T
+        self.mean_traces_filtered = self.traces_filtered.mean(axis=1)
 
 
     def get_raw_peaks(self, stim_time, post_stim, polarity='-', pre_stim=100):
@@ -39,6 +42,10 @@ class cell:
         '''
         self.baseline_raw = clamp.mean_baseline(self.traces, self.fs, stim_time, pre_stim)
         self.peaks_raw = clamp.epsc_peak(self.traces, self.baseline_raw, self.fs, stim_time, post_stim, polarity)
+        self.mean_baseline_raw = clamp.mean_baseline(self.mean_traces, self.fs, stim_time, pre_stim)
+        self.mean_peak_raw, peak_index = clamp.epsc_peak(self.mean_traces, self.mean_baseline_raw, self.fs, stim_time, post_stim, polarity, index=True)
+        self.mean_peak_raw_std = self.traces.std(axis=1)[peak_index]
+        self.mean_peak_raw_sem = self.traces.sem(axis=1)[peak_index]
 
 
     def get_filtered_peaks(self, stim_time, post_stim, polarity='-', pre_stim=100):
@@ -48,8 +55,13 @@ class cell:
         '''
         self.baseline_filtered = clamp.mean_baseline(self.traces_filtered, self.fs, stim_time, pre_stim)
         self.peaks_filtered = clamp.epsc_peak(self.traces_filtered, self.baseline_filtered, self.fs, stim_time, post_stim, polarity)
+        self.mean_baseline_filtered = clamp.mean_baseline(self.mean_traces_filtered, self.fs, stim_time, pre_stim)
+        self.mean_baseline_std_filtered = clamp.std_baseline(self.mean_traces_filtered, self.fs, stim_time) 
+        self.mean_peak_filtered, peak_index = clamp.epsc_peak(self.mean_traces_filtered, self.mean_baseline_filtered, self.fs, stim_time, post_stim, polarity, index=True)
+        self.mean_peak_filtered_std = self.traces_filtered.std(axis=1)[peak_index]
+        self.mean_peak_filtered_sem = self.traces_filtered.sem(axis=1)[peak_index]
 
-    
+
     def get_series_resistance(self, tp_start, vm_jump, pre_tp, unit_scaler):
         '''
         Finds the series resistance of raw traces with passthrough arguments to clamp.
@@ -83,8 +95,9 @@ class cell:
         self.responses: pd.DataFrame(bool)
             A DataFrame with bool for responses above the threshold in the column header.
         '''
-        baseline_std = self.baseline_filtered.std()
-        peak_mean = self.peaks_filtered.mean()
+
+        baseline_std = self.mean_baseline_std_filtered
+        peak_mean = self.mean_peak_filtered.mean()
 
         response_2x = abs(peak_mean) > baseline_std * 2
         response_3x = abs(peak_mean) > baseline_std * 3
@@ -101,6 +114,21 @@ class cell:
                                            'Response 3x STD': response_3x,
                                            response_string: response_threshold},
                                            index=range(1))
+
+
+    def get_sweepavg_summary(self):
+        '''
+        Accumulates all data and reports metadata, responses, means, stds, and sems.
+        '''
+        summary_data = pd.DataFrame({'Raw SweepAvg Peak (pA)': self.mean_peak_raw,
+                                     'Raw SweepAvg Peak STD (pA)': self.mean_peak_raw_std,
+                                     'Raw SweepAvg Peak SEM (pA)': self.mean_peak_raw_sem,
+                                     'Filtered SweepAvg Peak (pA)': self.mean_peak_filtered,
+                                     'Filtered SweepAvg Peak STD (pA)': self.mean_peak_filtered_std,
+                                     'Filtered SweepAvg Peak SEM (pA)': self.mean_peak_filtered_sem,
+                                     }, index=range(1))
+
+        self.sweepavg_summary = pd.concat([self.metadata, self.responses, summary_data], axis=1)
 
 
     def get_summary_data(self):
@@ -266,6 +294,22 @@ class cell:
         path = os.path.join(base_path, filename)
         self.summary_data.to_csv(path, float_format='%8.4f', index=False)
 
+
+    def save_sweepavg_summary(self, path_to_tables):
+        '''
+        Takes the metadata and sweep data finds the means and appends to save summary to tables
+        Parameters
+        ----------
+        path_to_tables: str
+            path to the tables directory
+        '''
+        # define path for saving file and save it
+        filename = '{}_{}_{}_{}_sweepavg_summary.csv'.format(self.cell_id, self.timepoint, self.cell_type, self.condition)
+        base_path = os.path.join(path_to_tables, self.timepoint, self.cell_type, self.condition)
+        metadata.check_create_dirs(base_path)
+
+        path = os.path.join(base_path, filename)
+        self.sweepavg_summary.to_csv(path, float_format='%8.4f', index=False)
 
     def save_mean_filtered_trace(self, path_to_tables):
         '''

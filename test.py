@@ -1,6 +1,9 @@
 import clamp_ephys
+import matplotlib.pyplot as plt
+%matplotlib
 
 path = "/home/nate/urban/clamp_ephys/test_data/JH200303_c1_light100.ibw"
+path2 = "/home/nate/urban/clamp_ephys/test_data/JH200303_c1_spontaneous.ibw"
 data_path = "/home/nate/urban/clamp_ephys/test_data/p2_data_notes.csv"
 tables = '/home/nate/urban/clamp_ephys/test_data/'
 figures = '/home/nate/urban/clamp_ephys/test_data/'
@@ -21,12 +24,13 @@ data.filter_traces(lowpass_freq)
 data.get_filtered_peaks(stim_time, post_stim)
 data.get_series_resistance(tp_start, vm_jump, pre_tp, unit_scaler)
 data.get_sweep_data()
-data.get_responses(threshold=3.789)
-data.get_summary_data()
+data.get_responses(threshold=5)
+data.get_sweepavg_summary()
 
 fig = data.plot_peaks_rs(amp_factor)
 
 data.save_fig(figures, fig)
 data.save_metadata(tables)
-data.save_summary_data(tables)
+data.save_sweepavg_summary(tables)
 data.save_mean_filtered_trace(tables)
+
