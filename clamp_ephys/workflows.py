@@ -58,6 +58,17 @@ class cell:
         self.rs = clamp.series_resistance(self.traces, self.fs, tp_start, vm_jump, pre_tp, unit_scaler)
 
 
+    def get_sweep_data(self):
+        '''
+        Takes all the data and returns a DataFrame with sweep_data.
+        '''
+        data_dict = OrderedDict()
+        data_dict['Raw Peaks (pA)'] = self.peaks_raw
+        data_dict['Filtered Peaks (pA)'] = self.peaks_filtered
+        data_dict['Rs (MOhms)'] = self.rs
+        self.sweep_data = pd.DataFrame(data_dict)
+
+
     def get_responses(self, threshold=None):
         '''
         Decides on whether there is a response above 2x, 3x above the baseline std,
@@ -90,6 +101,24 @@ class cell:
                                            'Response 3x STD': response_3x,
                                            response_string: response_threshold},
                                            index=range(1))
+
+
+    def get_summary_data(self):
+        '''
+        Accumulates all data and reports metadata, responses, means, stds, and sems.
+        '''
+        mean = self.sweep_data.mean()
+        mean.index = mean.index + ' mean'
+        std = self.sweep_data.std()
+        std.index = std.index + ' std'
+        sem = self.sweep_data.sem()
+        sem.index = sem.index + ' sem'
+
+        # put data together in single row of a pd.DataFrame
+        summary_data = pd.DataFrame(pd.concat([mean, std, sem])).T
+
+        # add in metadata and responses
+        self.summary_data = pd.concat([self.metadata, self.responses, summary_data], axis=1)
 
 
     def plot_peaks_rs(self, amp_factor):
@@ -209,12 +238,6 @@ class cell:
         path_to_tables: str
             path to the directory for tables
         '''
-        data_dict = OrderedDict()
-        data_dict['Raw Peaks (pA)'] = self.peaks_raw
-        data_dict['Filtered Peaks (pA)'] = self.peaks_filtered
-        data_dict['Rs (MOhms)'] = self.rs
-        self.sweep_data = pd.DataFrame(data_dict)
-
         # join summary data with metadata
         sweep_meta_data = self.metadata.join(self.sweep_data, how='right')
         sweep_meta_data.fillna(method='ffill', inplace=True)
@@ -258,6 +281,8 @@ class cell:
 
         path = os.path.join(base_path, filename)
         summary_data.to_csv(path, float_format='%8.4f', index=False)
+
+
 
 
     def save_mean_filtered_trace(self, path_to_tables):

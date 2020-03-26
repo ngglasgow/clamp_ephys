@@ -20,6 +20,7 @@ data.get_raw_peaks(stim_time, post_stim)
 data.filter_traces(lowpass_freq)
 data.get_filtered_peaks(stim_time, post_stim)
 data.get_series_resistance(tp_start, vm_jump, pre_tp, unit_scaler)
+data.get_sweep_data()
 data.get_responses(threshold=3.789)
 
 fig = data.plot_peaks_rs(amp_factor)
