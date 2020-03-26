@@ -22,10 +22,11 @@ data.get_filtered_peaks(stim_time, post_stim)
 data.get_series_resistance(tp_start, vm_jump, pre_tp, unit_scaler)
 data.get_sweep_data()
 data.get_responses(threshold=3.789)
+data.get_summary_data()
 
 fig = data.plot_peaks_rs(amp_factor)
 
 data.save_fig(figures, fig)
 data.save_metadata(tables)
-data.save_mean_data(tables)
+data.save_summary_data(tables)
 data.save_mean_filtered_trace(tables)
