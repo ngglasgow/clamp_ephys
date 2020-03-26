@@ -1,7 +1,7 @@
 
 
 def cell_response_checker(data, fs, stim_time, baseline, post_stim):
-    baseline = mean_baseline(fs=25, data=data, stim_time=500)
+    baseline = mean_baseline(fs, data, stim_time)
     peaks = epsc_peak(fs=25, data=data, baseline=baseline, stim_time=500, post_stim=150)
 
     '''

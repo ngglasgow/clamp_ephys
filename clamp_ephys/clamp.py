@@ -43,33 +43,6 @@ def mean_baseline(data, fs, stim_time, pre_stim=100):
     return baseline
 
 
-def std_baseline(fs, data, stim_time, pre_stim=100):
-    '''
-    Find the baseline st. dev. in a given time series
-    Parameters
-    ----------
-    data: pandas.Series or pandas.DataFrame
-        The time series data for which you want a baseline.
-    stim_time: int or float
-        The time in ms when stimulus is triggered.
-    pre_stim: int or float
-        Time in ms before the stimulus trigger over which baseline is measured.
-    fs: int or float
-        The sampling frequency in kHz.
-
-    Returns
-    -------
-    std: float or pandas.Series
-        The baseline st. dev. over the defined window
-    '''
-    start = (stim_time - pre_stim) * fs
-    stop = (stim_time - 1) * fs
-    window = data.iloc[start:stop]
-    std = window.std()
-
-    return std
-
-
 def epsc_peak(data, baseline, fs, stim_time, post_stim=100, polarity='-'):
     '''
     Find the peak EPSC value for a pandas.Series or for each sweep (column) of

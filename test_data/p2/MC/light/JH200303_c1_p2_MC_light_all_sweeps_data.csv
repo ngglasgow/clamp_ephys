@@ -1,4 +1,4 @@
-Date,Cell ID,Cell Number,Cell Path,Condition,Cell Type,Raw Peaks (nA),Filtered Peaks (nA),Rs (MOhms)
+Date,Cell ID,Cell Number,Cell Path,Condition,Cell Type,Raw Peaks (pA),Filtered Peaks (pA),Rs (MOhms)
 2020-03-03,JH200303_c1,1,JH200303_c1_light100.ibw,light,MC,-10.7917,  5.0778, 23.6009
 2020-03-03,JH200303_c1,1,JH200303_c1_light100.ibw,light,MC,-85.1762,-73.9793, 24.8710
 2020-03-03,JH200303_c1,1,JH200303_c1_light100.ibw,light,MC,-28.8013, -3.9086, 24.7663

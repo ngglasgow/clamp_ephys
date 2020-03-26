@@ -59,6 +59,40 @@ class cell:
         self.rs = clamp.series_resistance(self.traces, self.fs, tp_start, vm_jump, pre_tp, unit_scaler)
 
 
+    def get_sweep_responses(self, threshold=None):
+        '''
+        Decides on whether there is a response above 2x, 3x above the baseline std,
+        or a user-selectable cutoff.
+        Parameters
+        ----------
+        threshold: int, float (optional)
+            If supplied, will provide another threshold in addition to the 2x and 3x
+            above the baseline std to threshold the response checker.
+        Returns
+        -------
+        self.responses: pd.DataFrame(bool)
+            A DataFrame with bool for responses above the threshold in the column header.
+        '''
+        baseline_std = self.baseline_filtered.std()
+        peak_mean = self.peaks_filtered.mean()
+
+        response_2x = abs(peak_mean) > baseline_std * 2
+        response_3x = abs(peak_mean) > baseline_std * 3
+
+        if threshold is None:
+            self.responses = pd.DataFrame({'Response 2x STD': response_2x,
+                                           'Response 3x STD': response_3x},
+                                           index=range(1))
+        else:
+            response_threshold = abs(peak_mean) > baseline_std * threshold
+            response_string = 'Response {}x STD'.format(threshold)
+
+            self.responses = pd.DataFrame({'Response 2x STD': response_2x,
+                                           'Response 3x STD': response_3x,
+                                           response_string: response_threshold},
+                                           index=range(1))
+
+
     def plot_peaks_rs(self, amp_factor):
         '''
         Takes the data traces and plots the current summary of peaks plot
@@ -177,17 +211,14 @@ class cell:
             path to the directory for tables
         '''
         data_dict = OrderedDict()
-        data_dict['Raw Peaks (nA)'] = self.peaks_raw
-        data_dict['Filtered Peaks (nA)'] = self.peaks_filtered
+        data_dict['Raw Peaks (pA)'] = self.peaks_raw
+        data_dict['Filtered Peaks (pA)'] = self.peaks_filtered
         data_dict['Rs (MOhms)'] = self.rs
         self.sweep_data = pd.DataFrame(data_dict)
 
-        # fill in n=sweeps of metadata_df so that can join with peaks for clean df
-        metadata_df = pd.DataFrame(self.metadata, index=range(len(self.peaks_raw)))
-        metadata_df.fillna(method='ffill', inplace=True)
-
         # join summary data with metadata
-        sweep_meta_data = metadata_df.join(self.sweep_data)
+        sweep_meta_data = self.metadata.join(self.sweep_data, how='right')
+        sweep_meta_data.fillna(method='ffill', inplace=True)
 
         filename = '{}_{}_{}_{}_all_sweeps_data.csv'.format(self.cell_id, self.timepoint, self.cell_type, self.condition)
         base_path = os.path.join(path_to_tables, self.timepoint, self.cell_type, self.condition)
