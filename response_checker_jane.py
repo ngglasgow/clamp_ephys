@@ -222,8 +222,8 @@ def cell_response_checker(timepoint, file_name_list, data_dir, sf=25):
             Peak within 250 ms of blue light
         '''
 
-        baseline = mean_baseline(sf=25, data=data, stim_time=500)
-        peaks = epsc_peak(sf=25, data=data, baseline=baseline, stim_time=500, post_stim=150)
+        baseline = mean_baseline(sf=sf, data=data, stim_time=500)
+        peaks = epsc_peak(sf=sf, data=data, baseline=baseline, stim_time=500, post_stim=150)
 
         '''
             Pull out EPSC peaks from filtered signals
