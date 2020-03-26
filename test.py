@@ -1,5 +1,6 @@
 import clamp_ephys
 import pandas as pd
+import os
 
 '''####################### SET THE PROPER PATH YOU WANT ########################### '''
 paths = clamp_ephys.workflows.file_structure('server', 'Injected_GC_data/VC_pairs')
@@ -38,7 +39,7 @@ for path in paths.p2_paths:
 
     p2_summary = pd.concat([p2_summary, data.sweepavg_summary], ignore_index=True)
 
-    fig = data.plot_peaks_rs(amp_factor);
+    fig = data.plot_peaks_rs(amp_factor)
 
     data.save_fig(figures, fig)
     data.save_metadata(tables)
