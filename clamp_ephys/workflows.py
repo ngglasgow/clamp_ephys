@@ -250,7 +250,7 @@ class cell:
         sweep_meta_data.to_csv(path, float_format='%8.4f', index=False, header=True)
 
 
-    def save_mean_data(self, path_to_tables):
+    def save_summary_data(self, path_to_tables):
         '''
         Takes the metadata and sweep data finds the means and appends to save summary to tables
         Parameters
@@ -258,31 +258,13 @@ class cell:
         path_to_tables: str
             path to the tables directory
         '''
-        # make metadata into a series for easy appending
-        metaseries = self.metadata.loc[0]
-
-        # find mean, st dev, and sem of all sweeps for raw, filt, and rs
-        mean = metaseries.append(self.sweep_data.mean())
-        std = metaseries.append(self.sweep_data.std())
-        sem = metaseries.append(self.sweep_data.sem())
-
-        # combine into dataframe, add measure type string and # of sweeps
-        summary_data = pd.DataFrame([mean, std, sem])
-        measures = pd.DataFrame([['mean'],['st. dev.'],['sem']], columns=['Measure'])
-        n_sweeps = pd.DataFrame(len(self.sweep_data), index=range(3), columns=['# Sweeps'])
-
-
-        summary_data = pd.concat([summary_data, measures, n_sweeps], axis=1)
-
         # define path for saving file and save it
         filename = '{}_{}_{}_{}_summary_data.csv'.format(self.cell_id, self.timepoint, self.cell_type, self.condition)
         base_path = os.path.join(path_to_tables, self.timepoint, self.cell_type, self.condition)
         metadata.check_create_dirs(base_path)
 
         path = os.path.join(base_path, filename)
-        summary_data.to_csv(path, float_format='%8.4f', index=False)
-
-
+        self.summary_data.to_csv(path, float_format='%8.4f', index=False)
 
 
     def save_mean_filtered_trace(self, path_to_tables):
