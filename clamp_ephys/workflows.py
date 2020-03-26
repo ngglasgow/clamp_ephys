@@ -1,6 +1,5 @@
 from . import clamp
 from . import metadata
-from . import responses
 import elephant
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -59,7 +58,7 @@ class cell:
         self.rs = clamp.series_resistance(self.traces, self.fs, tp_start, vm_jump, pre_tp, unit_scaler)
 
 
-    def get_sweep_responses(self, threshold=None):
+    def get_responses(self, threshold=None):
         '''
         Decides on whether there is a response above 2x, 3x above the baseline std,
         or a user-selectable cutoff.
@@ -248,6 +247,7 @@ class cell:
         summary_data = pd.DataFrame([mean, std, sem])
         measures = pd.DataFrame([['mean'],['st. dev.'],['sem']], columns=['Measure'])
         n_sweeps = pd.DataFrame(len(self.sweep_data), index=range(3), columns=['# Sweeps'])
+
 
         summary_data = pd.concat([summary_data, measures, n_sweeps], axis=1)
 
