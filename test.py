@@ -1,4 +1,5 @@
 import clamp_ephys
+import pandas as pd
 
 '''####################### SET THE PROPER PATH YOU WANT ########################### '''
 paths = clamp_ephys.workflows.file_structure('server', 'Injected_GC_data/VC_pairs')
