@@ -11,7 +11,13 @@ import platform
 class cell:
     def __init__(self, path_to_file, fs, path_to_data_notes, timepoint):
         self.filepath = path_to_file
-        self.filename = self.filepath.split('/')[-1]
+
+        machine = platform.uname()[0]
+        if machine == 'Windows':
+            self.filename = self.filepath.split('\\')[-1]
+        else:
+            self.filename = self.filepath.split('/')[-1]
+
         self.fs = fs
         self.notes_path = path_to_data_notes
 
@@ -371,9 +377,9 @@ class file_structure:
         self.project = os.path.join(home_dir, project_path)
         self.figures = os.path.join(self.project, 'figures')
         self.tables = os.path.join(self.project, 'tables')
-        self.p2 = os.path.join(self.project, 'data/p2')
+        self.p2 = os.path.join(self.project, 'data', 'p2')
         self.p2_paths = [os.path.join(self.p2, file) for file in os.listdir(self.p2)]
-        self.p14 = os.path.join(self.project, 'data/p14')
+        self.p14 = os.path.join(self.project, 'data', 'p14')
         self.p14_paths = [os.path.join(self.p14, file) for file in os.listdir(self.p14)]
 
     def __repr__(self):

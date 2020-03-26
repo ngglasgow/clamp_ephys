@@ -38,7 +38,7 @@ for path in paths.p2_paths:
 
     p2_summary = pd.concat([p2_summary, data.sweepavg_summary], ignore_index=True)
 
-    fig = data.plot_peaks_rs(amp_factor)
+    fig = data.plot_peaks_rs(amp_factor);
 
     data.save_fig(figures, fig)
     data.save_metadata(tables)
