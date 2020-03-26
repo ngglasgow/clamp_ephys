@@ -372,9 +372,9 @@ class file_structure:
         self.figures = os.path.join(self.project, 'figures')
         self.tables = os.path.join(self.project, 'tables')
         self.p2 = os.path.join(self.project, 'data/p2')
-        self.p2_files = os.listdir(self.p2)
+        self.p2_paths = [os.path.join(self.p2, file) for file in os.listdir(self.p2)]
         self.p14 = os.path.join(self.project, 'data/p14')
-        self.p14_files = os.listdir(self.p14)
+        self.p14_paths = [os.path.join(self.p14, file) for file in os.listdir(self.p14)]
 
     def __repr__(self):
         return 'Project file structure and file lists for {}'.format(self.project)
