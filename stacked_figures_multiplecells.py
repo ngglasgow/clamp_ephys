@@ -1,49 +1,82 @@
 import clamp_ephys
-import os
 import pandas as pd
-import matplotlib.pyplot as plt
+import os
 
-'''####################### SET THE PROPER PATH YOU WANT ########################### '''
-paths = clamp_ephys.workflows.file_structure('local', 'Injected_GC_data/VC_pairs')
-p14 = pd.DataFrame()
-tables = paths.tables
-figures = paths.figures
+%matplotlib
+def igor_to_pandas(file, data_dir):
+    '''This function opens an igor binary file (.ibw), extracts the time
+    series data, and returns a pandas DataFrame'''
 
-for root, dirs, files in os.walk(os.path.join(paths.tables, 'p14')):
-    for name in files:
-        if "mean_subtracted_timeseries" in name:
-            path = os.path.join(root, name)
-            data = pd.read_csv(path)
-            filename = '_'.join(name.split('_')[0:3])
-            data.columns = [filename]
-            p14 = pd.concat([p14, data], axis=1)
+    file_path = os.path.join(data_dir, file)
+    data_raw = IgorIO(filename=file_path)
+    data_neo = data_raw.read_block()
+    data_neo_array = data_neo.segments[0].analogsignals[0]
+    data_df = pd.DataFrame(data_neo_array.as_array())
 
-save_path = os.path.join(paths.tables, 'p14_mean_traces.csv')
-p14.to_csv(save_path, float_format='%8.4f', index=False)
-
-''' create a DataFrame for light conditions '''
-p14_light = p14.filter(regex='light')
-
-''' drop any wanted/irrelevant cells, only show yes respoonses '''
-p14_light_MCs = p14_light.drop(columns=['JH190828_c2_light100', 'JH190828_c5_light100', 'JH190829_c1_light100',
-                                        'JH190829_c4_light100', 'JH190903_c1_light100', 'JH190903_c2_light100b',
-                                        'JH190904_c1_light100', 'JH190904_c3_light100', 'JH190905_c1_light100',
-                                        'JH190905_c4_light100', 'JH190905_c7_light100', 'JH191008_c3_light100',
-                                        'JH191008_c4_light100', 'JH191009_c3_light100', 'JH191009_c4_light100'])
+    return data_df
 
 
+def mean_baseline(data, stim_time, pre_stim=10, fs=10):
+    '''
+    Find the mean baseline in a given time series
+    Parameters
+    ----------
+    data: pandas.Series or pandas.DataFrame
+        The time series data for which you want a baseline.
+    stim_time: int or float
+        The time in ms when stimulus is triggered.
+    pre_stim: int or float
+        Time in ms before the stimulus trigger over which baseline is measured.
+    fs: int or float
+        The sampling frequency in kHz.
+
+    Returns
+    -------
+    baseline: float or pandas.Series
+        The mean baseline over the defined window
+    '''
+    start = (stim_time - pre_stim) * fs
+    stop = (stim_time - 1) * fs
+    window = data.iloc[start:stop]
+    baseline = window.mean()
+
+    return baseline
 
 
+# need to set up the appropriate paths here, and may not need all of these
+home_dir = os.path.join('Z:', os.sep)
 
-p14_light_TCs = p14_light.drop(columns=['JH190828_c1_light100', 'JH190828_c3_light100', 'JH190828_c4_light100',
-                                        'JH190828_c6_light100', 'JH190829_c2_light100', 'JH190829_c5_light100',
-                                        'JH190829_c6_light100', 'JH190903_c3_light100', 'JH190903_c4_light100',
-                                        'JH190904_c2_light100b', 'JH190904_c4_light100', 'JH190905_c2_light100',
-                                        'JH190905_c3_light100', 'JH190905_c6_light100', 'JH190905_c8_light100',
-                                        'JH191008_c1_light100', 'JH191008_c2_light100', 'JH191008_c5_light100',
-                                        'JH191009_c2_light100', 'JH191009_c5_light100', 'JH191009_c6_light100'])
+project_dir = os.path.join(home_dir, 'Huang', 'OSN_OMPvGg8_MTC')
+figure_dir = r'C:\Users\Jane Huang\Documents\Grad school\Urban Lab\Data Analysis\Injected_GC_data\GC_attch\figures'
+table_dir = os.path.join(project_dir, 'tables')
+#data_dir = os.path.join(project_dir, 'data')
+
+''' I had to add a r wtf'''
+data_dir = r'C:\Users\Jane Huang\Documents\Grad school\Urban Lab\Data Analysis\Injected_GC_data\New_VC_pairs\JH190829\slice_2\MC\data'
 
 
+# your file parsing loop that pulls out waves_mean and makes a waves_mean_df
+# goes here
+
+file_name_list = [f for f in listdir(data_dir) if isfile(join(data_dir, f))]
+waves_mean_df = pd.DataFrame()
+
+
+for file in file_name_list:
+    cell_waves_df = igor_to_pandas(file, data_dir)
+    cell_waves_mean = cell_waves_df.mean(axis=1)
+    waves_mean_df = pd.concat([waves_mean_df, cell_waves_mean], axis=1, ignore_index=True)
+    
+
+
+'''
+test_df = igor_to_pandas(file_name_list[10], data_dir)
+
+for i in range(len(test_df.columns)):
+    plt.figure()
+    plt.plot(test_df.iloc[:, i])
+
+'''
 ''' ########### stacking figures with no frame or scales ################## '''
 # first two lines are for if you want to make plots have unequal dimensions
 # gs_kw = dict(height_ratios=[0.5, 0.7, 0.7, 0.7, 4, 1])
@@ -51,24 +84,21 @@ p14_light_TCs = p14_light.drop(columns=['JH190828_c1_light100', 'JH190828_c3_lig
 
 
 ''' some parameters for automating figure sizing and rows '''
-n_cells = len(p14_light_TCs.columns)
-
-# rename columns for indexing
-p14_light_TCs.columns = range(n_cells)
-
-width = 2                   # plot width in inches
-height = n_cells * 0.5      # height in inches of figure, scaler is inch per plot
+n_sweeps = len(cell_waves_df.columns)
+n_to_plot = 5
+width = 3                   # plot width in inches
+height = n_sweeps * 0.5      # height in inches of figure, scaler is inch per plot
 stim_time = 500             # time of stimulus onset in ms
 stim_length = 100           # length of stimulus in ms
 fs = 10                     # sampling frequency in kHz
 light_amplitude = 0.045     # plot amp in nA where you want blue bar
-plotx_start = 450 * fs      # index of time axis you want to start plotting
-plotx_end = 1500 * fs       # index of time axis you want to stop plotting
+plotx_start = 4500          # index of time axis you want to start plotting
+plotx_end = 10000           # index of time axis you want to stop plotting
 yscaler = 1.1               # scaler for min/max if exceeding
 ploty_max = 0.050           # default scaling values for y
 ploty_min = -0.100          # default scaling values for y
 x_scalebar = 100            # x scalebar length in ms
-y_scalebar = 50           # y scalebar height in nA
+y_scalebar = 0.05           # y scalebar height in nA
 
 # if you want whatever auto ticks are, find x or y tick_list and comment out
 x_tick_list = [5000, 10000, 15000]  # set x ticks for making scale bar
@@ -79,15 +109,17 @@ wave_max_list = []
 wave_min_list = []
 
 # generate the figure with all the subplots
-fig, axs = plt.subplots(n_cells, 1, figsize=(width, height), constrained_layout=True)
+fig, axs = plt.subplots(n_to_plot, 1, figsize=(width, height), constrained_layout=True)
 
 # pull out one wave, subtract baseline, take slice, and plot
-for i in range(n_cells):
+for i in range(n_to_plot):
     # baseline subtract for each wave
-    wave = p14_light_TCs[i]
-    
+    wave = cell_waves_df[i]
+    baseline = mean_baseline(wave, stim_time)
+    baseline_subtracted_wave = wave - baseline
+
     # take slice of baseline subtracted wave and calculate max/min for scaling
-    wave_slice = wave[plotx_start:plotx_end]
+    wave_slice = baseline_subtracted_wave[plotx_start:plotx_end]
 
     wave_max = wave_slice.max()
     wave_max_list.append(wave_max)
@@ -127,25 +159,24 @@ else:
     else:
         for ax in axs.flat:
             ax.set_ylim(actual_min*yscaler, actual_max*yscaler)
-fig
+# fig
+# save figure to file
+fig_save_path = os.path.join(figure_dir, 'JH190626_c1_attch_light_1')
+fig.savefig(fig_save_path + '_waves_final.png', dpi=300, format='png')
 
-filename = 'p14_TC_simplifed_traces_noaxes.png'
-path = r"C:\Users\jhuang\Documents\phd_projects\Injected_GC_data\VC_pairs\figures\p14"
-savepath = os.path.join(path, filename)
-fig.savefig(savepath, dpi=300, format='png')
-plt.close()
-
-
+''' ############### same figure as above but with scales ################## '''
 # generate the figure with all the subplots
-fig, axs = plt.subplots(n_cells, 1, figsize=(width, height), constrained_layout=True)
+fig_scales, axs = plt.subplots(n_to_plot, 1, figsize=(width, height), constrained_layout=True)
 
 # pull out one wave, subtract baseline, take slice, and plot
-for i in range(n_cells):
+for i in range(n_to_plot):
     # baseline subtract for each wave
-    wave = p14_light_TCs[i]
-    
+    wave = cell_waves_df[i]
+    baseline = mean_baseline(wave, stim_time)
+    baseline_subtracted_wave = wave - baseline
+
     # take slice of baseline subtracted wave and calculate max/min for scaling
-    wave_slice = wave[plotx_start:plotx_end]
+    wave_slice = baseline_subtracted_wave[plotx_start:plotx_end]
 
     wave_max = wave_slice.max()
     wave_max_list.append(wave_max)
@@ -161,9 +192,8 @@ for i in range(n_cells):
     axs[i].set_xticks([])
     axs[i].set_yticks([])
 
-    # choose whether you want blue line or blue box, this is blue box
+    # add blue shading to all graphs
     axs[i].axvspan(stim_time * fs, (stim_time + stim_length) * fs, facecolor='cornflowerblue', alpha=0.5)
-
 
 # calculations and logic for max/min scaling as same for all axes
 actual_max = max(wave_max_list)         # find max of all waves
@@ -191,7 +221,7 @@ y_min = axs[0].get_ylim()[0]
 y_max = axs[0].get_ylim()[1]
 
 # add y scalebar
-axs[0].vlines(x_max - (x_max * 0.01), 0, -y_scalebar)
+axs[0].vlines(x_max - (x_max * 0.01), 0, y_scalebar)
 
 # add x scalebar after some arithmetic
 x_scalebar_start = x_min + 3 * (x_scalebar * fs)
@@ -199,17 +229,13 @@ x_scalebar_end = x_scalebar_start + (x_scalebar * fs)
 axs[0].hlines(y_min, x_scalebar_start, x_scalebar_end)
 
 # add labels
-axs[0].text(0.3, 0.9, '{} pA'.format(y_scalebar), ha='center', va='center', transform=axs[0].transAxes, fontsize=8)
+axs[0].text(0.3, 0.9, '{} pA'.format(y_scalebar * 1000), ha='center', va='center', transform=axs[0].transAxes, fontsize=8)
 axs[0].text(0.7, 0.9, '{} ms'.format(x_scalebar), ha='center', va='center', transform=axs[0].transAxes, fontsize=8)
 
 # reset axes limits to what they were before lines
 axs[0].set_xlim(x_min, x_max)
 axs[0].set_ylim(y_min, y_max)
 
-fig
-
-filename = 'p14_TC_simplifed_traces_axes.png'
-path = r"C:\Users\jhuang\Documents\phd_projects\Injected_GC_data\VC_pairs\figures\p14"
-savepath = os.path.join(path, filename)
-fig.savefig(savepath, dpi=300, format='png')
-plt.close()
+# save figure to file
+fig_save_path = os.path.join(figure_dir, 'JH190626_c1_attch_light_1')
+fig_scales.savefig(fig_save_path + '_waves_scales.png', dpi=300, format='png')

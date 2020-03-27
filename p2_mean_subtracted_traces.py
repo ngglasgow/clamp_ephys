@@ -132,7 +132,8 @@ fig
 
 filename = 'p2_TC_simplifed_traces_noaxes.png'
 path = r"C:\Users\jhuang\Documents\phd_projects\Injected_GC_data\VC_pairs\figures\p2"
-fig.savefig(path + filename, dpi=300, format='png')
+savepath = os.path.join(path, filename)
+fig.savefig(savepath, dpi=300, format='png')
 plt.close()
 
 
@@ -210,5 +211,6 @@ fig
 
 filename = 'p2_TC_simplifed_traces_axes.png'
 path = r"C:\Users\jhuang\Documents\phd_projects\Injected_GC_data\VC_pairs\figures\p2"
-fig.savefig(path + filename, dpi=300, format='png')
+savepath = os.path.join(path, filename)
+fig.savefig(savepath, dpi=300, format='png')
 plt.close()
