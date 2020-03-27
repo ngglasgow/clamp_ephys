@@ -20,7 +20,7 @@ class cell:
 
         self.fs = fs
         self.notes_path = path_to_data_notes
-
+        self.file_id = self.filename.split('.')[0]
         self.traces = clamp.igor_to_pandas(self.filepath) * amp_factor
         self.mean_traces = self.traces.mean(axis=1)
         self.time = np.arange(0, len(self.traces), 1000 / self.fs)
@@ -155,7 +155,7 @@ class cell:
         self.summary_data = pd.concat([self.metadata, self.responses, summary_data], axis=1)
 
 
-    def plot_peaks_rs(self, amp_factor):
+    def plot_peaks_rs(self, amp_factor, save_fig=False, path_to_figures=None):
         '''
         Takes the data traces and plots the current summary of peaks plot
         Parameters
@@ -164,7 +164,10 @@ class cell:
             is for scaling current values to = pA
         timepoint: str
             for labeling graph, what injection timepoint p2 or p14
-        
+        save_fig: bool 
+            tells function to either save and close the plot (true) or display the plot (false)
+        path_to_figures: str
+            path to figures IF save_fig=True
         Returns
         -------
         fig: matplotlib.pyplot fig
@@ -243,7 +246,18 @@ class cell:
         axs[1, 1].set_ylim(y_min_mean_lim, 100)
         axs[1, 1].legend(loc=1)
 
-        return fig
+        if save_fig is False:
+            return fig
+
+        elif save_fig is True:
+            
+            filename = '{}_{}_{}_{}_summary.png'.format(self.file_id, self.timepoint, self.cell_type, self.condition)
+            base_path = os.path.join(path_to_figures, self.timepoint, self.cell_type, self.condition)
+            metadata.check_create_dirs(base_path)
+
+            path = os.path.join(base_path, filename)
+            fig.savefig(path, dpi=300, format='png')
+            plt.close()
 
 
     def save_fig(self, path_to_figures, figure):
@@ -256,7 +270,7 @@ class cell:
         figure: plt.pyplot fig
             figure object
         '''
-        filename = '{}_{}_{}_{}_summary.png'.format(self.cell_id, self.timepoint, self.cell_type, self.condition)
+        filename = '{}_{}_{}_{}_summary.png'.format(self.file_id, self.timepoint, self.cell_type, self.condition)
         base_path = os.path.join(path_to_figures, self.timepoint, self.cell_type, self.condition)
         metadata.check_create_dirs(base_path)
 
@@ -276,7 +290,7 @@ class cell:
         sweep_meta_data = self.metadata.join(self.sweep_data, how='right')
         sweep_meta_data.fillna(method='ffill', inplace=True)
 
-        filename = '{}_{}_{}_{}_all_sweeps_data.csv'.format(self.cell_id, self.timepoint, self.cell_type, self.condition)
+        filename = '{}_{}_{}_{}_all_sweeps_data.csv'.format(self.file_id, self.timepoint, self.cell_type, self.condition)
         base_path = os.path.join(path_to_tables, self.timepoint, self.cell_type, self.condition)
         metadata.check_create_dirs(base_path)
 
@@ -293,7 +307,7 @@ class cell:
             path to the tables directory
         '''
         # define path for saving file and save it
-        filename = '{}_{}_{}_{}_summary_data.csv'.format(self.cell_id, self.timepoint, self.cell_type, self.condition)
+        filename = '{}_{}_{}_{}_summary_data.csv'.format(self.file_id, self.timepoint, self.cell_type, self.condition)
         base_path = os.path.join(path_to_tables, self.timepoint, self.cell_type, self.condition)
         metadata.check_create_dirs(base_path)
 
@@ -310,7 +324,7 @@ class cell:
             path to the tables directory
         '''
         # define path for saving file and save it
-        filename = '{}_{}_{}_{}_sweepavg_summary.csv'.format(self.cell_id, self.timepoint, self.cell_type, self.condition)
+        filename = '{}_{}_{}_{}_sweepavg_summary.csv'.format(self.file_id, self.timepoint, self.cell_type, self.condition)
         base_path = os.path.join(path_to_tables, self.timepoint, self.cell_type, self.condition)
         metadata.check_create_dirs(base_path)
 
@@ -325,14 +339,29 @@ class cell:
         path_to_tables: str
             path to the tables directory
         '''
-        mean_filtered_trace = self.traces_filtered.mean(axis=1)
-        filename = '{}_{}_{}_{}_mean_timeseries.csv'.format(self.cell_id, self.timepoint, self.cell_type, self.condition)
+        filename = '{}_{}_{}_{}_mean_timeseries.csv'.format(self.file_id, self.timepoint, self.cell_type, self.condition)
         base_path = os.path.join(path_to_tables, self.timepoint, self.cell_type, self.condition)
         metadata.check_create_dirs(base_path)
 
         path = os.path.join(base_path, filename)
-        mean_filtered_trace.to_csv(path, float_format='%8.4f', index=False, header=False)
+        self.mean_traces_filtered.to_csv(path, float_format='%8.4f', index=False, header=False)
 
+    def save_mean_subtracted_trace(self, path_to_tables):
+        '''
+        Saves the mean trace from the self.mean_traces_filtered time series
+        Parameters
+        ----------
+        path_to_tables: str
+            path to the tables directory
+        '''
+        subtracted_trace = self.mean_traces_filtered - self.mean_baseline_filtered
+
+        filename = '{}_{}_{}_{}_mean_subtraced_timeseries.csv'.format(self.file_id, self.timepoint, self.cell_type, self.condition)
+        base_path = os.path.join(path_to_tables, self.timepoint, self.cell_type, self.condition)
+        metadata.check_create_dirs(base_path)
+
+        path = os.path.join(base_path, filename)
+        subtracted_trace.to_csv(path, float_format='%8.4f', index=False, header=False)
 
     def __repr__(self):
         return 'Data object for a single cell {}'.format(self.filename)
