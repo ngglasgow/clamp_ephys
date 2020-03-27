@@ -356,7 +356,7 @@ class cell:
         '''
         subtracted_trace = self.mean_traces_filtered - self.mean_baseline_filtered
 
-        filename = '{}_{}_{}_{}_mean_subtraced_timeseries.csv'.format(self.file_id, self.timepoint, self.cell_type, self.condition)
+        filename = '{}_{}_{}_{}_mean_subtracted_timeseries.csv'.format(self.file_id, self.timepoint, self.cell_type, self.condition)
         base_path = os.path.join(path_to_tables, self.timepoint, self.cell_type, self.condition)
         metadata.check_create_dirs(base_path)
 
