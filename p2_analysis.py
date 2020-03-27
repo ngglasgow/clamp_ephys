@@ -39,7 +39,7 @@ for path in paths.p2_paths:
 
     p2_summary = pd.concat([p2_summary, data.sweepavg_summary], ignore_index=True)
 
-    fig = data.plot_peaks_rs(amp_factor, save_fig=True, paths_to_figures=figures)
+    fig = data.plot_peaks_rs(amp_factor, save_fig=True, path_to_figures=figures)
 
     data.save_metadata(tables)
     data.save_sweepavg_summary(tables)

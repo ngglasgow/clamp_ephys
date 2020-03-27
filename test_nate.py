@@ -23,11 +23,11 @@ amp_factor = 1      # scaler for making plots in pA
 fs = 25             # kHz, the sampling frequency
 
 '''#################### THIS LOOP RUNS THE SINGLE CELL ANALYSIS #################### '''
-# p14_summary will hold the single line summary for each cell
-p14_summary = pd.DataFrame()
+# p2_summary will hold the single line summary for each cell
+p2_summary = pd.DataFrame()
 
-for path in paths.p14_paths:
-    data = clamp_ephys.workflows.cell(path, fs=fs, path_to_data_notes=data_path, timepoint='p14', amp_factor=amp_factor)
+for path in paths.p2_paths[0:2]:
+    data = clamp_ephys.workflows.cell(path, fs=fs, path_to_data_notes=data_path, timepoint='p2', amp_factor=amp_factor)
 
     data.get_raw_peaks(stim_time, post_stim)
     data.filter_traces(lowpass_freq)
@@ -37,14 +37,14 @@ for path in paths.p14_paths:
     data.get_responses(threshold=5)
     data.get_sweepavg_summary()
 
-    p14_summary = pd.concat([p14_summary, data.sweepavg_summary], ignore_index=True)
+    p2_summary = pd.concat([p2_summary, data.sweepavg_summary], ignore_index=True)
 
-    fig = data.plot_peaks_rs(amp_factor)
+    fig = data.plot_peaks_rs(amp_factor, save_fig=True, path_to_figures=figures)
 
-    data.save_fig(figures, fig)
     data.save_metadata(tables)
     data.save_sweepavg_summary(tables)
     data.save_mean_filtered_trace(tables)
+    data.save_mean_subtracted_trace(tables)
 
-summary_path = os.path.join(tables, 'p14_summary.csv')
-p14_summary.to_csv(summary_path, float_format='%8.4f', index=False)
+summary_path = os.path.join(tables, 'p2_summary.csv')
+p2_summary.to_csv(summary_path, float_format='%8.4f', index=False)
