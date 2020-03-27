@@ -190,7 +190,7 @@ y_min = axs[0].get_ylim()[0]
 y_max = axs[0].get_ylim()[1]
 
 # add y scalebar
-axs[0].vlines(x_max - (x_max * 0.01), 0, y_scalebar)
+axs[0].vlines(x_max - (x_max * 0.01), 0, -y_scalebar)
 
 # add x scalebar after some arithmetic
 x_scalebar_start = x_min + 3 * (x_scalebar * fs)
@@ -198,7 +198,7 @@ x_scalebar_end = x_scalebar_start + (x_scalebar * fs)
 axs[0].hlines(y_min, x_scalebar_start, x_scalebar_end)
 
 # add labels
-axs[0].text(0.3, 0.9, '{} pA'.format(y_scalebar * 1000), ha='center', va='center', transform=axs[0].transAxes, fontsize=8)
+axs[0].text(0.3, 0.9, '{} pA'.format(y_scalebar), ha='center', va='center', transform=axs[0].transAxes, fontsize=8)
 axs[0].text(0.7, 0.9, '{} ms'.format(x_scalebar), ha='center', va='center', transform=axs[0].transAxes, fontsize=8)
 
 # reset axes limits to what they were before lines
