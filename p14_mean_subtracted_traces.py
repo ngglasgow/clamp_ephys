@@ -51,10 +51,10 @@ p14_light_TCs = p14_light.drop(columns=['JH190828_c1_light100', 'JH190828_c3_lig
 
 
 ''' some parameters for automating figure sizing and rows '''
-n_cells = len(p14_light_MCs.columns)
+n_cells = len(p14_light_TCs.columns)
 
 # rename columns for indexing
-p14_light_MCs.columns = range(n_cells)
+p14_light_TCs.columns = range(n_cells)
 
 width = 2                   # plot width in inches
 height = n_cells * 0.5      # height in inches of figure, scaler is inch per plot
@@ -84,7 +84,7 @@ fig, axs = plt.subplots(n_cells, 1, figsize=(width, height), constrained_layout=
 # pull out one wave, subtract baseline, take slice, and plot
 for i in range(n_cells):
     # baseline subtract for each wave
-    wave = p14_light_MCs[i]
+    wave = p14_light_TCs[i]
     
     # take slice of baseline subtracted wave and calculate max/min for scaling
     wave_slice = wave[plotx_start:plotx_end]
@@ -129,9 +129,10 @@ else:
             ax.set_ylim(actual_min*yscaler, actual_max*yscaler)
 fig
 
-filename = 'p14_MC_simplifed_traces_noaxes.png'
+filename = 'p14_TC_simplifed_traces_noaxes.png'
 path = r"C:\Users\jhuang\Documents\phd_projects\Injected_GC_data\VC_pairs\figures\p14"
-fig.savefig(path + filename, dpi=300, format='png')
+savepath = os.path.join(path, filename)
+fig.savefig(savepath, dpi=300, format='png')
 plt.close()
 
 
@@ -141,7 +142,7 @@ fig, axs = plt.subplots(n_cells, 1, figsize=(width, height), constrained_layout=
 # pull out one wave, subtract baseline, take slice, and plot
 for i in range(n_cells):
     # baseline subtract for each wave
-    wave = p14_light_MCs[i]
+    wave = p14_light_TCs[i]
     
     # take slice of baseline subtracted wave and calculate max/min for scaling
     wave_slice = wave[plotx_start:plotx_end]
@@ -207,7 +208,8 @@ axs[0].set_ylim(y_min, y_max)
 
 fig
 
-filename = 'p14_MC_simplifed_traces_axes.png'
+filename = 'p14_TC_simplifed_traces_axes.png'
 path = r"C:\Users\jhuang\Documents\phd_projects\Injected_GC_data\VC_pairs\figures\p14"
-fig.savefig(path + filename, dpi=300, format='png')
+savepath = os.path.join(path, filename)
+fig.savefig(savepath, dpi=300, format='png')
 plt.close()
