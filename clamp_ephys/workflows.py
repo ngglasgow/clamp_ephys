@@ -63,10 +63,10 @@ class cell:
         self.peaks_filtered = clamp.epsc_peak(self.traces_filtered, self.baseline_filtered, self.fs, stim_time, post_stim, polarity)
         self.mean_baseline_filtered = clamp.mean_baseline(self.mean_traces_filtered, self.fs, stim_time, pre_stim)
         self.mean_baseline_std_filtered = clamp.std_baseline(self.mean_traces_filtered, self.fs, stim_time) 
-        self.mean_peak_filtered, peak_index = clamp.epsc_peak(self.mean_traces_filtered, self.mean_baseline_filtered, self.fs, stim_time, post_stim, polarity, index=True)
-        self.mean_peak_filtered_std = self.traces_filtered.std(axis=1)[peak_index]
-        self.mean_peak_filtered_sem = self.traces_filtered.sem(axis=1)[peak_index]
-
+        self.mean_peak_filtered, self.mean_peak_index = clamp.epsc_peak(self.mean_traces_filtered, self.mean_baseline_filtered, self.fs, stim_time, post_stim, polarity, index=True)
+        self.mean_peak_filtered_std = self.traces_filtered.std(axis=1)[self.mean_peak_index]
+        self.mean_peak_filtered_sem = self.traces_filtered.sem(axis=1)[self.mean_peak_index]
+        self.mean_peak_filtered_time = self.mean_peak_index * (1000 / self.fs)
 
     def get_series_resistance(self, tp_start, vm_jump, pre_tp, unit_scaler):
         '''
@@ -363,6 +363,22 @@ class cell:
         path = os.path.join(base_path, filename)
         subtracted_trace.to_csv(path, float_format='%8.4f', index=False, header=False)
 
+    def save_mean_peak_time(self, path_to_tables):
+        '''
+        Saves the mean trace from the self.mean_traces_filtered time series
+        Parameters
+        ----------
+        path_to_tables: str
+            path to the tables directory
+        '''
+        filename = '{}_{}_{}_{}_mean_peak_time.csv'.format(self.file_id, self.timepoint, self.cell_type, self.condition)
+        base_path = os.path.join(path_to_tables, self.timepoint, self.cell_type, self.condition)
+        metadata.check_create_dirs(base_path)
+
+        path = os.path.join(base_path, filename)
+        peak_time = pd.DataFrame(self.mean_peak_filtered_time)
+        peak_time.to_csv(path, float_format='%8.4f', index=False, header=False)
+ 
     def __repr__(self):
         return 'Data object for a single cell {}'.format(self.filename)
         

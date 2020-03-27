@@ -45,6 +45,7 @@ for path in paths.p14_paths:
     data.save_sweepavg_summary(tables)
     data.save_mean_filtered_trace(tables)
     data.save_mean_subtracted_trace(tables)
+    data.save_mean_peak_time(tables)
 
 summary_path = os.path.join(tables, 'p14_summary.csv')
 p14_summary.to_csv(summary_path, float_format='%8.4f', index=False)
