@@ -11,7 +11,7 @@ for root, dirs, files in os.walk(os.path.join(paths.tables, 'p2')):
         if "mean_timeseries" in name:
             path = os.path.join(root, name)
             data = pd.read_csv(path)
-            filename = '_'.join([name.split('_')[i] for i in [0, 1, 4]])
+            filename = name.split('_')[0]
             data.columns = [filename]
             p2 = pd.concat([p2, data], axis=1)
 
@@ -23,7 +23,7 @@ for root, dirs, files in os.walk(os.path.join(paths.tables, 'p14')):
         if "mean_timeseries" in name:
             path = os.path.join(root, name)
             data = pd.read_csv(path)
-            filename = '_'.join([name.split('_')[i] for i in [0, 1, 4]])
+            filename = name.split('_')[0]
             data.columns = [filename]
             p14 = pd.concat([p14, data], axis=1)
 
