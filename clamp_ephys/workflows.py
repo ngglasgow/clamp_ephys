@@ -9,7 +9,7 @@ import os
 import platform
 
 class cell:
-    def __init__(self, path_to_file, fs, path_to_data_notes, timepoint):
+    def __init__(self, path_to_file, fs, path_to_data_notes, timepoint, amp_factor):
         self.filepath = path_to_file
 
         machine = platform.uname()[0]
@@ -21,7 +21,7 @@ class cell:
         self.fs = fs
         self.notes_path = path_to_data_notes
 
-        self.traces = clamp.igor_to_pandas(self.filepath)
+        self.traces = clamp.igor_to_pandas(self.filepath) * amp_factor
         self.mean_traces = self.traces.mean(axis=1)
         self.time = np.arange(0, len(self.traces), 1000 / self.fs)
         self.metadata = metadata.get_metadata(self.filename, self.notes_path)
@@ -172,7 +172,7 @@ class cell:
         '''
         # set up auto y max for peak plots (min since negative)
         y_min = self.peaks_filtered.min()
-        y_min_lim = y_min * 1.15 * amp_factor
+        y_min_lim = y_min * 1.15
 
         # set up logic for Rs y scaling: if < 20 MOhms, don't scale, if > scale
         if self.rs.max() <= 20:
@@ -186,10 +186,10 @@ class cell:
         fig, axs = plt.subplots(2, 2, figsize=(6, 6), constrained_layout=True)
         fig.suptitle('Summary for {} {} {} {}'.format(self.timepoint, self.cell_type, self.cell_id, self.condition))
         # optional for plotting unfiltered on same graph for comparison
-        axs[0, 0].plot(self.peaks_raw*amp_factor, marker='.', color='darkgray', linestyle='', label='raw')
+        axs[0, 0].plot(self.peaks_raw, marker='.', color='darkgray', linestyle='', label='raw')
 
         # plot the filterd peak currents NOTE: convert peak values to pA
-        axs[0, 0].plot(self.peaks_filtered*amp_factor, color='k', marker='.', linestyle='', label='filtered')
+        axs[0, 0].plot(self.peaks_filtered, color='k', marker='.', linestyle='', label='filtered')
         axs[0, 0].set_xlabel('Stimulus Number')
         axs[0, 0].set_ylabel('EPSC Peak (pA)')
         axs[0, 0].set_ylim(0, y_min_lim)
@@ -210,7 +210,7 @@ class cell:
         # calculate auto y min limit for mean + std
         mean_std = (filt_data_mean - filt_data_std)
         y_min_mean_std = mean_std[5000:].min()
-        y_min_mean_lim = y_min_mean_std * 1.1 * amp_factor
+        y_min_mean_lim = y_min_mean_std * 1.1
 
         # set up time value for length of traces and window of what to plot
         sweep_length = len(self.traces)                  # allow for different sweep length
@@ -221,8 +221,8 @@ class cell:
         blue_stop = 550     # ms, time blue light turns off
 
         # plot mean data trace with all traces in gray behind
-        axs[1, 0].plot(sweep_time, filt_subtracted*amp_factor, color='darkgray', linewidth=0.5)
-        axs[1, 0].plot(sweep_time, filt_data_mean*amp_factor, color='k')
+        axs[1, 0].plot(sweep_time, filt_subtracted, color='darkgray', linewidth=0.5)
+        axs[1, 0].plot(sweep_time, filt_data_mean, color='k')
         axs[1, 0].hlines(75, blue_start, blue_stop, color='deepskyblue')
         axs[1, 0].set_xlabel('Time (ms)')
         axs[1, 0].set_ylabel('Current (pA)')
@@ -230,10 +230,10 @@ class cell:
         axs[1, 0].set_ylim(y_min_lim, 100)
 
         # plot mean data trace with shaded SEM gray behind
-        axs[1, 1].plot(sweep_time, filt_data_mean*amp_factor, color='k', label='mean')
+        axs[1, 1].plot(sweep_time, filt_data_mean, color='k', label='mean')
         axs[1, 1].fill_between(sweep_time,
-                            (filt_data_mean - filt_data_std) * amp_factor,
-                            (filt_data_mean + filt_data_std) * amp_factor,
+                            (filt_data_mean - filt_data_std),
+                            (filt_data_mean + filt_data_std),
                             color='darkgray',
                             label='st. dev.')
         axs[1, 1].hlines(75, blue_start, blue_stop, color='deepskyblue')
