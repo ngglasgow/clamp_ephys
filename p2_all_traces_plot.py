@@ -5,43 +5,34 @@ import matplotlib.pyplot as plt
 
 '''####################### SET THE PROPER PATH YOU WANT ########################### '''
 paths = clamp_ephys.workflows.file_structure('local', 'Injected_GC_data/VC_pairs')
-p14 = pd.DataFrame()
 tables = paths.tables
 figures = paths.figures
 
-for root, dirs, files in os.walk(os.path.join(paths.tables, 'p14')):
-    for name in files:
-        if "mean_subtracted_timeseries" in name:
-            path = os.path.join(root, name)
-            data = pd.read_csv(path)
-            filename = '_'.join(name.split('_')[0:3])
-            data.columns = [filename]
-            p14 = pd.concat([p14, data], axis=1)
-
-save_path = os.path.join(paths.tables, 'p14_mean_traces.csv')
-p14.to_csv(save_path, float_format='%8.4f', index=False)
+save_path = os.path.join(paths.tables, 'p2_mean_traces.csv')
+p2 = pd.read_csv(save_path)
 
 ''' create a DataFrame for light conditions '''
-p14_light = p14.filter(regex='light')
+p2_light = p2.filter(regex='light')
 
 ''' drop any wanted/irrelevant cells, only show yes respoonses '''
-p14_light_MCs = p14_light.drop(columns=['JH190828_c2_light100', 'JH190828_c5_light100', 'JH190829_c1_light100',
-                                        'JH190829_c4_light100', 'JH190903_c1_light100', 'JH190903_c2_light100b',
-                                        'JH190904_c1_light100', 'JH190904_c3_light100', 'JH190905_c1_light100',
-                                        'JH190905_c4_light100', 'JH190905_c7_light100', 'JH191008_c3_light100',
-                                        'JH191008_c4_light100', 'JH191009_c3_light100', 'JH191009_c4_light100'])
+p2_light_MCs = p2_light.drop(columns=['JH200303_c2_light100', 'JH200303_c4_light100', 'JH200303_c6_light100',
+                                        'JH200303_c8_light100', 'JH200304_c2_light100', 'JH200304_c3_light100',
+                                        'JH200310_c2_light100', 'JH200310_c4_light100', 'JH200311_c2_light100',
+                                        'JH200311_c5_light100', 'JH200313_c1_light100', 'JH200313_c5_light100'])
+
+# drop cells without visual responses
+p2_light_MCs_responses = p2_light_MCs.drop(columns=['JH200303_c1_light100', 'JH200303_c3_light100', 'JH200304_c1_light100',
+                                                    'JH200304_c4_light100', 'JH200310_c1_light100', 'JH200310_c3_light100',
+                                                    'JH200313_c4_light100', 'JH200313_c6_light100'])
 
 
 
+p2_light_TCs = p2_light.drop(columns=['JH200303_c1_light100', 'JH200303_c3_light100', 'JH200303_c7_light100',
+                                        'JH200304_c1_light100', 'JH200304_c4_light100', 'JH200310_c1_light100',
+                                        'JH200310_c3_light100', 'JH200311_c1_light100', 'JH200311_c3_light100',
+                                        'JH200311_c4_light100', 'JH200311_c6_light100', 'JH200313_c2_light100',
+                                        'JH200313_c3_light100', 'JH200313_c4_light100', 'JH200313_c6_light100'])
 
-
-p14_light_TCs = p14_light.drop(columns=['JH190828_c1_light100', 'JH190828_c3_light100', 'JH190828_c4_light100',
-                                        'JH190828_c6_light100', 'JH190829_c2_light100', 'JH190829_c5_light100',
-                                        'JH190829_c6_light100', 'JH190903_c3_light100', 'JH190903_c4_light100',
-                                        'JH190904_c2_light100b', 'JH190904_c4_light100', 'JH190905_c2_light100',
-                                        'JH190905_c3_light100', 'JH190905_c6_light100', 'JH190905_c8_light100',
-                                        'JH191008_c1_light100', 'JH191008_c2_light100', 'JH191008_c5_light100',
-                                        'JH191009_c2_light100', 'JH191009_c5_light100', 'JH191009_c6_light100'])
 
 
 ''' ########### stacking figures with no frame or scales ################## '''
@@ -51,16 +42,16 @@ p14_light_TCs = p14_light.drop(columns=['JH190828_c1_light100', 'JH190828_c3_lig
 
 
 ''' some parameters for automating figure sizing and rows '''
-n_cells = len(p14_light_TCs.columns)
+n_cells = len(p2_light_TCs.columns)
 
 # rename columns for indexing
-p14_light_TCs.columns = range(n_cells)
+p2_light_TCs.columns = range(n_cells)
 
 width = 2                   # plot width in inches
 height = n_cells * 0.5      # height in inches of figure, scaler is inch per plot
 stim_time = 500             # time of stimulus onset in ms
 stim_length = 100           # length of stimulus in ms
-fs = 10                     # sampling frequency in kHz
+fs = 25                     # sampling frequency in kHz
 light_amplitude = 0.045     # plot amp in nA where you want blue bar
 plotx_start = 450 * fs      # index of time axis you want to start plotting
 plotx_end = 1500 * fs       # index of time axis you want to stop plotting
@@ -68,7 +59,7 @@ yscaler = 1.1               # scaler for min/max if exceeding
 ploty_max = 0.050           # default scaling values for y
 ploty_min = -0.100          # default scaling values for y
 x_scalebar = 100            # x scalebar length in ms
-y_scalebar = 50           # y scalebar height in nA
+y_scalebar = 0.05           # y scalebar height in nA
 
 # if you want whatever auto ticks are, find x or y tick_list and comment out
 x_tick_list = [5000, 10000, 15000]  # set x ticks for making scale bar
@@ -84,7 +75,7 @@ fig, axs = plt.subplots(n_cells, 1, figsize=(width, height), constrained_layout=
 # pull out one wave, subtract baseline, take slice, and plot
 for i in range(n_cells):
     # baseline subtract for each wave
-    wave = p14_light_TCs[i]
+    wave = p2_light_TCs[i]
     
     # take slice of baseline subtracted wave and calculate max/min for scaling
     wave_slice = wave[plotx_start:plotx_end]
@@ -129,8 +120,8 @@ else:
             ax.set_ylim(actual_min*yscaler, actual_max*yscaler)
 fig
 
-filename = 'p14_TC_simplifed_traces_noaxes.png'
-path = r"C:\Users\jhuang\Documents\phd_projects\Injected_GC_data\VC_pairs\figures\p14"
+filename = 'p2_TC_simplifed_traces_noaxes.png'
+path = r"C:\Users\jhuang\Documents\phd_projects\Injected_GC_data\VC_pairs\figures\p2"
 savepath = os.path.join(path, filename)
 fig.savefig(savepath, dpi=300, format='png')
 plt.close()
@@ -142,7 +133,7 @@ fig, axs = plt.subplots(n_cells, 1, figsize=(width, height), constrained_layout=
 # pull out one wave, subtract baseline, take slice, and plot
 for i in range(n_cells):
     # baseline subtract for each wave
-    wave = p14_light_TCs[i]
+    wave = p2_light_TCs[i]
     
     # take slice of baseline subtracted wave and calculate max/min for scaling
     wave_slice = wave[plotx_start:plotx_end]
@@ -208,8 +199,8 @@ axs[0].set_ylim(y_min, y_max)
 
 fig
 
-filename = 'p14_TC_simplifed_traces_axes.png'
-path = r"C:\Users\jhuang\Documents\phd_projects\Injected_GC_data\VC_pairs\figures\p14"
+filename = 'p2_TC_simplifed_traces_axes.png'
+path = r"C:\Users\jhuang\Documents\phd_projects\Injected_GC_data\VC_pairs\figures\p2"
 savepath = os.path.join(path, filename)
 fig.savefig(savepath, dpi=300, format='png')
 plt.close()

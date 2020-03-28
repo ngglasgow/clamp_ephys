@@ -1,0 +1,368 @@
+import clamp_ephys
+import os
+import pandas as pd
+import matplotlib.pyplot as plt
+
+'''####################### SET THE PROPER PATH YOU WANT ########################### '''
+paths = clamp_ephys.workflows.file_structure('local', 'Injected_GC_data/VC_pairs')
+tables = paths.tables
+figures = paths.figures
+
+save_path = os.path.join(paths.tables, 'p14_mean_traces.csv')
+p14 = pd.read_csv(save_path)
+
+
+''' create a DataFrame for light conditions '''
+p14_light = p14.filter(regex='light')
+
+''' drop any wanted/irrelevant cells, only show yes respoonses '''
+p14_light_MCs = p14_light.drop(columns=['JH190828_c2_light100', 'JH190828_c5_light100', 'JH190829_c1_light100',
+                                        'JH190829_c4_light100', 'JH190903_c1_light100', 'JH190903_c2_light100b',
+                                        'JH190904_c1_light100', 'JH190904_c3_light100', 'JH190905_c1_light100',
+                                        'JH190905_c4_light100', 'JH190905_c7_light100', 'JH191008_c3_light100',
+                                        'JH191008_c4_light100', 'JH191009_c3_light100', 'JH191009_c4_light100'])
+
+''' make two separate groups of MCs depending on size of response (manually determined) '''
+p14_light_MCs_small = p14_light_MCs.drop(columns=['JH190903_c3_light100', 'JH190903_c4_light100', 'JH191008_c1_light100',
+                                                'JH191008_c2_light100'])
+
+p14_light_MCs_large = p14_light_MCs.loc[:,['JH190903_c3_light100', 'JH190903_c4_light100', 'JH191008_c1_light100',
+                                                'JH191008_c2_light100']]
+
+
+''' ########### stacking figures with no frame or scales ################## '''
+# first two lines are for if you want to make plots have unequal dimensions
+# gs_kw = dict(height_ratios=[0.5, 0.7, 0.7, 0.7, 4, 1])
+# fig, axs = plt.subplots(6, 8, figsize=(20, 5.5), gridspec_kw=gs_kw, constrained_layout=True)
+
+''' making plots for MCs with small responses '''
+
+''' some parameters for automating figure sizing and rows '''
+n_cells = len(p14_light_MCs_small.columns)
+
+# rename columns for indexing
+p14_light_MCs_small.columns = range(n_cells)
+
+width = 4                   # plot width in inches
+height = n_cells * 1      # height in inches of figure, scaler is inch per plot
+stim_time = 500             # time of stimulus onset in ms
+stim_length = 100           # length of stimulus in ms
+fs = 10                     # sampling frequency in kHz
+light_amplitude = 0.045     # plot amp in nA where you want blue bar
+plotx_start = 450 * fs      # index of time axis you want to start plotting
+plotx_end = 1500 * fs       # index of time axis you want to stop plotting
+yscaler = 1.1               # scaler for min/max if exceeding
+ploty_max = 0.050           # default scaling values for y
+ploty_min = -0.100          # default scaling values for y
+x_scalebar = 100            # x scalebar length in ms
+y_scalebar = 50           # y scalebar height in nA
+
+# if you want whatever auto ticks are, find x or y tick_list and comment out
+x_tick_list = [5000, 10000, 15000]  # set x ticks for making scale bar
+y_tick_list = [-0.1, -0.05, 0]        # set y ticks for making scale bar
+
+# create list for storing max and min values for scaling
+wave_max_list = []
+wave_min_list = []
+
+# generate the figure with all the subplots
+fig, axs = plt.subplots(n_cells, 1, figsize=(width, height), constrained_layout=True)
+
+# pull out one wave, subtract baseline, take slice, and plot
+for i in range(n_cells):
+    # baseline subtract for each wave
+    wave = p14_light_MCs_small[i]
+    
+    # take slice of baseline subtracted wave and calculate max/min for scaling
+    wave_slice = wave[plotx_start:plotx_end]
+
+    wave_max = wave_slice.max()
+    wave_max_list.append(wave_max)
+
+    wave_min = wave_slice.min()
+    wave_min_list.append(wave_min)
+
+    # actually plot the baseline subtracted wave
+    axs[i].plot(wave_slice, color='darkgray')
+
+    # remove frame y_ticks and x_ticks for all to make only traces
+    axs[i].set_frame_on(False)
+    axs[i].set_xticks([])
+    axs[i].set_yticks([])
+
+    # choose whether you want blue line or blue box, this is blue box
+    axs[i].axvspan(stim_time * fs, (stim_time + stim_length) * fs, facecolor='cornflowerblue', alpha=0.5)
+
+# plot a blue line, comment out if just want box
+# axs[0].hlines(light_amplitude, stim_time * fs, (stim_time + stim_length) * fs, color='deepskyblue', linewidth=2)
+
+# calculations and logic for max/min scaling as same for all axes
+actual_max = max(wave_max_list)         # find max of all waves
+actual_min = min(wave_min_list)         # find min of all waves
+
+if actual_max < ploty_max:
+    if actual_min > ploty_min:
+        for ax in axs.flat:
+            ax.set_ylim(ploty_min, ploty_max)
+    else:
+        for ax in axs.flat:
+            ax.set_ylim(actual_min*yscaler, ploty_max)
+else:
+    if actual_min > ploty_min:
+        for ax in axs.flat:
+            ax.set_ylim(ploty_min, actual_max*yscaler)
+    else:
+        for ax in axs.flat:
+            ax.set_ylim(actual_min*yscaler, actual_max*yscaler)
+fig
+
+filename = 'p14_MC_small_simplifed_traces_noaxes.png'
+path = r"C:\Users\jhuang\Documents\phd_projects\Injected_GC_data\VC_pairs\figures\p14"
+savepath = os.path.join(path, filename)
+fig.savefig(savepath, dpi=300, format='png')
+plt.close()
+
+
+# generate the figure with all the subplots
+fig, axs = plt.subplots(n_cells, 1, figsize=(width, height), constrained_layout=True)
+
+# pull out one wave, subtract baseline, take slice, and plot
+for i in range(n_cells):
+    # baseline subtract for each wave
+    wave = p14_light_MCs_small[i]
+    
+    # take slice of baseline subtracted wave and calculate max/min for scaling
+    wave_slice = wave[plotx_start:plotx_end]
+
+    wave_max = wave_slice.max()
+    wave_max_list.append(wave_max)
+
+    wave_min = wave_slice.min()
+    wave_min_list.append(wave_min)
+
+    # actually plot the baseline subtracted wave
+    axs[i].plot(wave_slice, color='darkgray')
+
+    # remove frame y_ticks and x_ticks for all to make only traces
+    axs[i].set_frame_on(False)
+    axs[i].set_xticks([])
+    axs[i].set_yticks([])
+
+    # choose whether you want blue line or blue box, this is blue box
+    axs[i].axvspan(stim_time * fs, (stim_time + stim_length) * fs, facecolor='cornflowerblue', alpha=0.5)
+
+
+# calculations and logic for max/min scaling as same for all axes
+actual_max = max(wave_max_list)         # find max of all waves
+actual_min = min(wave_min_list)         # find min of all waves
+
+if actual_max < ploty_max:
+    if actual_min > ploty_min:
+        for ax in axs.flat:
+            ax.set_ylim(ploty_min, ploty_max)
+    else:
+        for ax in axs.flat:
+            ax.set_ylim(actual_min*yscaler, ploty_max)
+else:
+    if actual_min > ploty_min:
+        for ax in axs.flat:
+            ax.set_ylim(ploty_min, actual_max*yscaler)
+    else:
+        for ax in axs.flat:
+            ax.set_ylim(actual_min*yscaler, actual_max*yscaler)
+
+# scalebar section makes x and y scales at full scale by drawing lines
+x_min = axs[0].get_xlim()[0]
+x_max = axs[0].get_xlim()[1]
+y_min = axs[0].get_ylim()[0]
+y_max = axs[0].get_ylim()[1]
+
+# add y scalebar
+axs[0].vlines(x_max - (x_max * 0.01), 0, -y_scalebar)
+
+# add x scalebar after some arithmetic
+x_scalebar_start = x_min + 3 * (x_scalebar * fs)
+x_scalebar_end = x_scalebar_start + (x_scalebar * fs)
+axs[0].hlines(y_min, x_scalebar_start, x_scalebar_end)
+
+# add labels
+axs[0].text(0.3, 0.9, '{} pA'.format(y_scalebar), ha='center', va='center', transform=axs[0].transAxes, fontsize=8)
+axs[0].text(0.7, 0.9, '{} ms'.format(x_scalebar), ha='center', va='center', transform=axs[0].transAxes, fontsize=8)
+
+# reset axes limits to what they were before lines
+axs[0].set_xlim(x_min, x_max)
+axs[0].set_ylim(y_min, y_max)
+
+fig
+
+filename = 'p14_MC_small_simplifed_traces_axes.png'
+path = r"C:\Users\jhuang\Documents\phd_projects\Injected_GC_data\VC_pairs\figures\p14"
+savepath = os.path.join(path, filename)
+fig.savefig(savepath, dpi=300, format='png')
+plt.close()
+
+''' making plots for MCs with large responses '''
+
+''' some parameters for automating figure sizing and rows '''
+n_cells = len(p14_light_MCs_large.columns)
+
+# rename columns for indexing
+p14_light_MCs_large.columns = range(n_cells)
+
+width = 4                   # plot width in inches
+height = n_cells * 1      # height in inches of figure, scaler is inch per plot
+stim_time = 500             # time of stimulus onset in ms
+stim_length = 100           # length of stimulus in ms
+fs = 10                     # sampling frequency in kHz
+light_amplitude = 0.045     # plot amp in nA where you want blue bar
+plotx_start = 450 * fs      # index of time axis you want to start plotting
+plotx_end = 1500 * fs       # index of time axis you want to stop plotting
+yscaler = 1.1               # scaler for min/max if exceeding
+ploty_max = 0.050           # default scaling values for y
+ploty_min = -0.100          # default scaling values for y
+x_scalebar = 100            # x scalebar length in ms
+y_scalebar = 50           # y scalebar height in nA
+
+# if you want whatever auto ticks are, find x or y tick_list and comment out
+x_tick_list = [5000, 10000, 15000]  # set x ticks for making scale bar
+y_tick_list = [-0.1, -0.05, 0]        # set y ticks for making scale bar
+
+# create list for storing max and min values for scaling
+wave_max_list = []
+wave_min_list = []
+
+# generate the figure with all the subplots
+fig, axs = plt.subplots(n_cells, 1, figsize=(width, height), constrained_layout=True)
+
+# pull out one wave, subtract baseline, take slice, and plot
+for i in range(n_cells):
+    # baseline subtract for each wave
+    wave = p14_light_MCs_large[i]
+    
+    # take slice of baseline subtracted wave and calculate max/min for scaling
+    wave_slice = wave[plotx_start:plotx_end]
+
+    wave_max = wave_slice.max()
+    wave_max_list.append(wave_max)
+
+    wave_min = wave_slice.min()
+    wave_min_list.append(wave_min)
+
+    # actually plot the baseline subtracted wave
+    axs[i].plot(wave_slice, color='darkgray')
+
+    # remove frame y_ticks and x_ticks for all to make only traces
+    axs[i].set_frame_on(False)
+    axs[i].set_xticks([])
+    axs[i].set_yticks([])
+
+    # choose whether you want blue line or blue box, this is blue box
+    axs[i].axvspan(stim_time * fs, (stim_time + stim_length) * fs, facecolor='cornflowerblue', alpha=0.5)
+
+# plot a blue line, comment out if just want box
+# axs[0].hlines(light_amplitude, stim_time * fs, (stim_time + stim_length) * fs, color='deepskyblue', linewidth=2)
+
+# calculations and logic for max/min scaling as same for all axes
+actual_max = max(wave_max_list)         # find max of all waves
+actual_min = min(wave_min_list)         # find min of all waves
+
+if actual_max < ploty_max:
+    if actual_min > ploty_min:
+        for ax in axs.flat:
+            ax.set_ylim(ploty_min, ploty_max)
+    else:
+        for ax in axs.flat:
+            ax.set_ylim(actual_min*yscaler, ploty_max)
+else:
+    if actual_min > ploty_min:
+        for ax in axs.flat:
+            ax.set_ylim(ploty_min, actual_max*yscaler)
+    else:
+        for ax in axs.flat:
+            ax.set_ylim(actual_min*yscaler, actual_max*yscaler)
+fig
+
+filename = 'p14_MC_large_simplifed_traces_noaxes.png'
+path = r"C:\Users\jhuang\Documents\phd_projects\Injected_GC_data\VC_pairs\figures\p14"
+savepath = os.path.join(path, filename)
+fig.savefig(savepath, dpi=300, format='png')
+plt.close()
+
+
+# generate the figure with all the subplots
+fig, axs = plt.subplots(n_cells, 1, figsize=(width, height), constrained_layout=True)
+
+# pull out one wave, subtract baseline, take slice, and plot
+for i in range(n_cells):
+    # baseline subtract for each wave
+    wave = p14_light_MCs_large[i]
+    
+    # take slice of baseline subtracted wave and calculate max/min for scaling
+    wave_slice = wave[plotx_start:plotx_end]
+
+    wave_max = wave_slice.max()
+    wave_max_list.append(wave_max)
+
+    wave_min = wave_slice.min()
+    wave_min_list.append(wave_min)
+
+    # actually plot the baseline subtracted wave
+    axs[i].plot(wave_slice, color='darkgray')
+
+    # remove frame y_ticks and x_ticks for all to make only traces
+    axs[i].set_frame_on(False)
+    axs[i].set_xticks([])
+    axs[i].set_yticks([])
+
+    # choose whether you want blue line or blue box, this is blue box
+    axs[i].axvspan(stim_time * fs, (stim_time + stim_length) * fs, facecolor='cornflowerblue', alpha=0.5)
+
+
+# calculations and logic for max/min scaling as same for all axes
+actual_max = max(wave_max_list)         # find max of all waves
+actual_min = min(wave_min_list)         # find min of all waves
+
+if actual_max < ploty_max:
+    if actual_min > ploty_min:
+        for ax in axs.flat:
+            ax.set_ylim(ploty_min, ploty_max)
+    else:
+        for ax in axs.flat:
+            ax.set_ylim(actual_min*yscaler, ploty_max)
+else:
+    if actual_min > ploty_min:
+        for ax in axs.flat:
+            ax.set_ylim(ploty_min, actual_max*yscaler)
+    else:
+        for ax in axs.flat:
+            ax.set_ylim(actual_min*yscaler, actual_max*yscaler)
+
+# scalebar section makes x and y scales at full scale by drawing lines
+x_min = axs[0].get_xlim()[0]
+x_max = axs[0].get_xlim()[1]
+y_min = axs[0].get_ylim()[0]
+y_max = axs[0].get_ylim()[1]
+
+# add y scalebar
+axs[0].vlines(x_max - (x_max * 0.01), 0, -y_scalebar)
+
+# add x scalebar after some arithmetic
+x_scalebar_start = x_min + 3 * (x_scalebar * fs)
+x_scalebar_end = x_scalebar_start + (x_scalebar * fs)
+axs[0].hlines(y_min, x_scalebar_start, x_scalebar_end)
+
+# add labels
+axs[0].text(0.3, 0.9, '{} pA'.format(y_scalebar), ha='center', va='center', transform=axs[0].transAxes, fontsize=8)
+axs[0].text(0.7, 0.9, '{} ms'.format(x_scalebar), ha='center', va='center', transform=axs[0].transAxes, fontsize=8)
+
+# reset axes limits to what they were before lines
+axs[0].set_xlim(x_min, x_max)
+axs[0].set_ylim(y_min, y_max)
+
+fig
+
+filename = 'p14_MC_large_simplifed_traces_axes.png'
+path = r"C:\Users\jhuang\Documents\phd_projects\Injected_GC_data\VC_pairs\figures\p14"
+savepath = os.path.join(path, filename)
+fig.savefig(savepath, dpi=300, format='png')
+plt.close()
