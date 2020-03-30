@@ -45,7 +45,7 @@ for path in paths.p2_paths[0:2]:
     data.save_sweepavg_summary(tables)
     data.save_mean_filtered_trace(tables)
     data.save_mean_subtracted_trace(tables)
-    data.save_mean_peak_time(tables)
+    # data.save_mean_peak_time(tables)
 
 
 summary_path = os.path.join(tables, 'p2_summary.csv')
