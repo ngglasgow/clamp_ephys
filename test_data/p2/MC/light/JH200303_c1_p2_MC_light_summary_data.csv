@@ -1,0 +1,2 @@
+Date,Cell ID,Cell Number,Cell Path,Condition,Cell Type,Response 2x STD,Response 3x STD,Response 3.789x STD,Raw Peaks (pA) mean,Filtered Peaks (pA) mean,Rs (MOhms) mean,Raw Peaks (pA) std,Filtered Peaks (pA) std,Rs (MOhms) std,Raw Peaks (pA) sem,Filtered Peaks (pA) sem,Rs (MOhms) sem
+2020-03-03,JH200303_c1,1,JH200303_c1_light100.ibw,light,MC,True,True,True,-46.5263,-32.3835, 27.4821, 24.7286, 28.6213,  1.7544,  4.5148,  5.2255,  0.3203
