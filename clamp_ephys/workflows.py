@@ -7,7 +7,7 @@ import numpy as np
 from collections import OrderedDict
 import os
 import platform
-from scipy.signal import chirp, find_peaks, peak_widths
+import scipy
 
 class cell:
     def __init__(self, path_to_file, fs, path_to_data_notes, timepoint, amp_factor):
@@ -61,13 +61,36 @@ class cell:
         adds peaks_filtered attribute to data object: pandas.Series
         '''
         self.baseline_filtered = clamp.mean_baseline(self.traces_filtered, self.fs, stim_time, pre_stim)
-        self.peaks_filtered = clamp.epsc_peak(self.traces_filtered, self.baseline_filtered, self.fs, stim_time, post_stim, polarity)
+        self.baseline_filtered_std = clamp.std_baseline(self.traces_filtered, self.fs, stim_time)
+        self.peaks_filtered, self.peaks_filtered_indices = clamp.epsc_peak(self.traces_filtered, self.baseline_filtered, self.fs, stim_time, post_stim, polarity, index=True)
         self.mean_baseline_filtered = clamp.mean_baseline(self.mean_traces_filtered, self.fs, stim_time, pre_stim)
         self.mean_baseline_std_filtered = clamp.std_baseline(self.mean_traces_filtered, self.fs, stim_time) 
         self.mean_peak_filtered, self.mean_peak_index = clamp.epsc_peak(self.mean_traces_filtered, self.mean_baseline_filtered, self.fs, stim_time, post_stim, polarity, index=True)
         self.mean_peak_filtered_std = self.traces_filtered.std(axis=1)[self.mean_peak_index]
         self.mean_peak_filtered_sem = self.traces_filtered.sem(axis=1)[self.mean_peak_index]
-        self.mean_peak_filtered_time = self.mean_peak_index * (1000 / self.fs)
+        self.mean_peak_filtered_time = self.mean_peak_index / self.fs
+
+
+    def get_max_peak_half_width(self):
+        n = len(self.traces_filtered.columns)
+        hw_df = pd.DataFrame()
+
+        if self.mean_peak_filtered > 0:
+            invert = 1
+        
+        else:
+            invert = -1
+
+        for i in range(n):
+            x = self.traces_filtered[i].values * invert
+            peak = [self.peaks_filtered_indices[i]]
+            hw, hw_height, hw_left, hw_right = scipy.signal.peak_widths(x, peak, rel_height=0.5)
+            hw_time = hw / self.fs
+            hw_df = pd.concat([hw_df, pd.DataFrame(hw_time)], ignore_index=True)
+        hw_df.columns = ['Max peak half-width (ms)']
+
+        self.max_peak_half_widths = hw_df
+
 
     def get_filtered_peaks_kinetics(self, fs, stim_time, post_stim, polarity='-'):
         '''
@@ -87,7 +110,7 @@ class cell:
         self.current_start = self.traces_filtered_windowed.argmax(self.traces_windowed < (self.individual_peaks_filtered * 0.2))
 
         # this is finding full width at half max
-        self.fwhm = peak_widths(self.traces_filtered_windowed, self.individual_peaks_index, rel_height=0.5)
+        self.fwhm = scipy.signal.peak_widths(self.traces_filtered_windowed, self.individual_peaks_index, rel_height=0.5)
         
         # plt.plot(self.traces_filtered_windowed)
         # plt.plot(self.individual_peaks_index, self.traces_filtered_windowed[self.individual_peaks_index], "x")
