@@ -41,6 +41,14 @@ class cell:
         self.traces_filtered = pd.DataFrame(traces_filtered).T
         self.mean_traces_filtered = self.traces_filtered.mean(axis=1)
 
+    def get_first_raw_peak(self, stim_time, post_stim, polarity='-', pre_stim=100):
+        '''
+        Finds the baseline and the first peak, defined as the first event to exceed
+        threshold greater than 3 std above the baseline (defined as last 3s of the sweep)
+        '''
+        self.baseline_raw = 
+
+
 
     def get_raw_peaks(self, stim_time, post_stim, polarity='-', pre_stim=100):
         '''
@@ -71,7 +79,7 @@ class cell:
         self.mean_peak_filtered_time = self.mean_peak_index / self.fs
 
 
-    def get_max_peak_half_width(self):
+    def get_fwhm_peak_max(self):
         n = len(self.traces_filtered.columns)
         hw_df = pd.DataFrame()
 
@@ -90,6 +98,8 @@ class cell:
             hw_df = pd.concat([hw_df, hw_peak], ignore_index=True)
 
         self.max_peak_half_widths = hw_df
+
+        return hw_df
 
 
     def get_filtered_peaks_kinetics(self, fs, stim_time, post_stim, polarity='-'):

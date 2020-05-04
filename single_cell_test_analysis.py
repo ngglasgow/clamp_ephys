@@ -2,6 +2,7 @@ import clamp_ephys
 import pandas as pd
 import os
 import scipy
+import matplotlib
 import matplotlib.pyplot as plt
 
 '''####################### SET THE PROPER PATH YOU WANT ########################### '''
@@ -30,7 +31,10 @@ data = clamp_ephys.workflows.cell(cell_path, fs=fs, path_to_data_notes=data_path
 
 data.get_raw_peaks(stim_time, post_stim)
 data.filter_traces(lowpass_freq)
-data.get_filtered_peaks(stim_time, post_stim)
+
+# collect peak amplitudes and time to peak of all the max peaks
+peaks_max = data.get_filtered_peaks(stim_time, post_stim)
+time_to_peak_max = (data.peaks_filtered_indices / fs) - stim_time
 
 def plot_half_width(trace, data):
     '''plots a trace with the peak identified and the half width drawn
@@ -41,7 +45,7 @@ def plot_half_width(trace, data):
     '''
     x = data.traces_filtered[trace]
     peak = data.peaks_filtered_indices[trace]
-    hw_data = data.max_peak_half_widths.iloc[trace, 1:].values
+    hw_data = data.get_fwhm_peak_max.iloc[trace, 1:].values
 
     fig, axs = plt.subplots()
     axs.plot(x)
@@ -50,10 +54,13 @@ def plot_half_width(trace, data):
 
     return fig
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# test new class function
-data.get_max_peak_half_width()
 
 # pick an example trace to plot the actual half width of a given peak 
-%matplotlib
-
+%matplotlib widget
 fig = plot_half_width(1, data)
+
+# test new class function; collect FWHMs of all the peak IPSCs
+halfwidths_peak_max = data.get_fwhm_peak_max()['Max peak half-width (ms)']
+
+
+
