@@ -55,12 +55,9 @@ def plot_half_width(trace, data):
     return fig
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-# pick an example trace to plot the actual half width of a given peak 
-%matplotlib widget
-fig = plot_half_width(1, data)
-
 # test new class function; collect FWHMs of all the peak IPSCs
 halfwidths_peak_max = data.get_fwhm_peak_max()['Max peak half-width (ms)']
 
-
-
+# pick an example trace to plot the actual half width of a given peak 
+%matplotlib widget
+fig = plot_half_width(1, data)
