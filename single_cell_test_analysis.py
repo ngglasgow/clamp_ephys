@@ -57,4 +57,4 @@ data.get_max_peak_half_width()
 %matplotlib
 
 fig = plot_half_width(1, data)
-new = np.randn(140)
+
