@@ -43,10 +43,12 @@ def plot_half_width(trace, data):
     peak = data.peaks_filtered_indices[trace]
     hw_data = data.max_peak_half_widths.iloc[trace, 1:].values
 
-    plt.figure()
-    plt.plot(x)
-    plt.plot(peak, x[peak], 'x')
-    plt.hlines(hw_data[0] * -1, hw_data[1], hw_data[2], color='r')
+    fig, axs = plt.subplots()
+    axs.plot(x)
+    axs.plot(peak, x[peak], 'x')
+    axs.hlines(hw_data[0] * -1, hw_data[1], hw_data[2], color='r')
+
+    return fig
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # test new class function
 data.get_max_peak_half_width()
