@@ -32,19 +32,26 @@ data.get_raw_peaks(stim_time, post_stim)
 data.filter_traces(lowpass_freq)
 data.get_filtered_peaks(stim_time, post_stim)
 
+def plot_half_width(trace, data):
+    '''plots a trace with the peak identified and the half width drawn
+    trace: int
+        index of the trace you want to see
+    data: data object
+        needs to be a data object
+    '''
+    x = data.traces_filtered[trace]
+    peak = data.peaks_filtered_indices[trace]
+    hw_data = data.max_peak_half_widths.iloc[trace, 1:].values
 
+    plt.figure()
+    plt.plot(x)
+    plt.plot(peak, x[peak], 'x')
+    plt.hlines(hw_data[0] * -1, hw_data[1], hw_data[2], color='r')
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # test new class function
 data.get_max_peak_half_width()
 
 # pick an example trace to plot the actual half width of a given peak 
 %matplotlib
-trace = 0
-x = data.traces_filtered[trace]
-peak = data.peaks_filtered_indices[trace]
-hw_data = data.max_peak_half_widths.iloc[trace, 1:].values
 
-plt.figure()
-plt.plot(x)
-plt.plot(peak, x[peak], 'x')
-plt.hlines(hw_data[0] * -1, hw_data[1], hw_data[2], color='r')
+plot_half_width(1, data)
