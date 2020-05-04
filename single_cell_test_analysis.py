@@ -56,4 +56,4 @@ data.get_max_peak_half_width()
 # pick an example trace to plot the actual half width of a given peak 
 %matplotlib
 
-plot_half_width(1, data)
+fig = plot_half_width(1, data)
