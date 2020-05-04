@@ -86,8 +86,8 @@ class cell:
             peak = [self.peaks_filtered_indices[i]]
             hw, hw_height, hw_left, hw_right = scipy.signal.peak_widths(x, peak, rel_height=0.5)
             hw_time = hw / self.fs
-            hw_df = pd.concat([hw_df, pd.DataFrame(hw_time)], ignore_index=True)
-        hw_df.columns = ['Max peak half-width (ms)']
+            hw_peak = pd.DataFrame({'Max peak half-width (ms)': hw_time, 'HW height': hw_height, 'HW left index': hw_left, 'HW right index': hw_right}, index=range(1))
+            hw_df = pd.concat([hw_df, hw_peak], ignore_index=True)
 
         self.max_peak_half_widths = hw_df
 
