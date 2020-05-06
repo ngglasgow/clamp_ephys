@@ -46,7 +46,7 @@ class cell:
         Finds the baseline and the first peak, defined as the first event to exceed
         threshold greater than 3 std above the baseline (defined as last 3s of the sweep)
         '''
-        self.baseline_raw = 
+        self.baseline_raw = None
 
 
 
