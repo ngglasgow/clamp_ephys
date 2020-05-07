@@ -107,9 +107,9 @@ data.get_max_peak_half_width()
 # drop first 520 s from sweep to account for TP and only look at time from stimulus onset to end of sweep
 window_start = (stim_time + 20) * fs
 test_x = subtracted_data.iloc[window_start:, 0].values
-thresh = test_x.std()
+thresh = 3 * test_x.std()
 
-# finding all peaks
+# finding all peaks; should we change thresh to 3x std?
 peaks, properties = scipy.signal.find_peaks(test_x * -1, prominence=thresh)
 prominence_data = tuple(properties.values())
 plt.figure()
@@ -117,16 +117,37 @@ plt.plot(test_x)
 plt.plot(peaks, test_x[peaks], 'x')
 
 # extracting first response/peak; first_event_index = time to first peak because windowed sweep starts at stimulus onset (520 ms)
-first_event_index = peaks[0]
-time_to_first_peak = first_event_index
-first_event_amplitude = test_x[first_event_index]
+first_event_index = [peaks[0]]
+time_to_first_peak = peaks[0]
+first_event_amplitude = test_x[time_to_first_peak]
 
+'''
 # finding latency to response, i.e. the time at which current exceeds 3x std of baseline
 baseline_start = baseline_start * fs
 baseline_end = baseline_end * fs
 baseline = new_mean_baseline(data, fs, baseline_start, baseline_end)
 baseline_std = new_std_baseline(data, fs, baseline_start, baseline_end)
+'''
 
+# find 10-90% rise time
+# asking to eval at rel_height equivalent to evaluating at height of Peak(height) - prominence * rel_height
+# so evaluating at rel_height = 0.1 does not equal evaluating at 10% of Peak(height)
+test_hw, test_hw_height, test_hw_left, test_hw_right = scipy.signal.peak_widths(test_x * -1, first_event_index, rel_height=0.1)
+test_hw_height = test_hw_height * -1
 
+plt.figure()
+plt.plot()
+plt.plot(test_x)
+plt.plot(first_event_index, test_x[first_event_index], 'x')
+plt.hlines(test_hw_height, test_hw_left, test_hw_right, color='C2')
+
+test_hw, test_hw_height, test_hw_left, test_hw_right = scipy.signal.peak_widths(test_x * -1, first_event_index, rel_height=0.9)
+test_hw_height = test_hw_height * -1
+
+plt.figure()
+plt.plot()
+plt.plot(test_x)
+plt.plot(first_event_index, test_x[first_event_index], 'x')
+plt.hlines(test_hw_height, test_hw_left, test_hw_right, color='C2')
 
 
