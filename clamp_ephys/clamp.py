@@ -16,6 +16,60 @@ def igor_to_pandas(path_to_file):
     return data_df
 
 
+def new_mean_baseline(data, fs, baseline_start, baseline_end=6000):
+    '''
+    Find the mean baseline in a given time series, defined as the last 3s of the sweep
+    Parameters
+    ----------
+    data: pandas.Series or pandas.DataFrame
+        The time series data for which you want a baseline.
+    fs: int or float
+        The sampling frequency in kHz.
+    baseline_start: int or float
+        The time in ms when baseline starts.
+    baseline_end: int or float
+        The length of the sweep and the time when baseline ends.
+
+    Returns
+    -------
+    baseline: float or pandas.Series
+        The mean baseline over the defined window
+    '''
+    start = baseline_start_time * fs
+    stop = baseline_end_time * fs
+    window = data.iloc[start:stop]
+    baseline = window.mean()
+
+    return baseline
+
+
+def new_std_baseline(data, fs, baseline_start_time, baseline_end_time=600):
+    '''
+    Find the mean baseline in a given time series
+    Parameters
+    ----------
+    data: pandas.Series or pandas.DataFrame
+        The time series data for which you want a baseline.
+    fs: int or float
+        The sampling frequency in kHz.
+    stim_time: int or float
+        The time in ms when stimulus is triggered.
+    pre_stim: int or float
+        Time in ms before the stimulus trigger over which baseline is measured.
+
+    Returns
+    -------
+    baseline: float or pandas.Series
+        The mean baseline over the defined window
+    '''
+    start = baseline_start_time * fs
+    stop = baseline_end_time * fs
+    window = data.iloc[start:stop]
+    std = window.std()
+
+    return std
+
+
 def mean_baseline(data, fs, stim_time, pre_stim=100):
     '''
     Find the mean baseline in a given time series

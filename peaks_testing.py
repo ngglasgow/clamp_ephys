@@ -8,15 +8,17 @@ import matplotlib.pyplot as plt
 data_path = os.path.join(os.getcwd(), 'test_data', 'p2_data_notes.csv')
 
 ''' ################### SET/CHECK THESE PARAMETERS BEFORE RUNNING ################## '''
-lowpass_freq = 500  # Hz
-stim_time = 500     # ms
-post_stim = 250     # ms, amount of time after stimulus to look for max value
-tp_start = 5        # ms, time of start of test pulse
-vm_jump = 10        # mV, test pulse voltage jump
-pre_tp = 3          # ms, amount of time before test pulse start to get baseline
-unit_scaler = -12   # unitless, scaler to get back to A, from pA
-amp_factor = 1      # scaler for making plots in pA
-fs = 25             # kHz, the sampling frequency
+lowpass_freq = 500      # Hz
+stim_time = 500         # ms
+post_stim = 250         # ms, amount of time after stimulus to look for max value
+baseline_start = 3000   # ms, time in the sweep to start taking the baseline
+baseline_end = 6000     # ms, time in the sweep at which baseline ends
+tp_start = 5            # ms, time of start of test pulse
+vm_jump = 10            # mV, test pulse voltage jump
+pre_tp = 3              # ms, amount of time before test pulse start to get baseline
+unit_scaler = -12       # unitless, scaler to get back to A, from pA
+amp_factor = 1          # scaler for making plots in pA
+fs = 25                 # kHz, the sampling frequency
 
 '''#################### THIS LOOP RUNS THE SINGLE CELL ANALYSIS #################### '''
 cell_path = os.path.join(os.getcwd(), 'test_data', 'JH200303_c1_light100.ibw')
@@ -36,7 +38,7 @@ testing for kinetics
     - any peaks MUST be positive, so need to invert for sure
     - 
 '''
-%matplotlib
+%matplotlib widget
 peaks = data.peaks_filtered_indices
 subtracted_data = data.traces_filtered - data.baseline_filtered
 
@@ -98,3 +100,33 @@ hw_df.columns = ['Max peak half-width (ms)']
 #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # test new class function
 data.get_max_peak_half_width()
+
+#%%
+# jane's messes for extracting first response from each sweep
+
+# drop first 520 s from sweep to account for TP and only look at time from stimulus onset to end of sweep
+window_start = (stim_time + 20) * fs
+test_x = subtracted_data.iloc[window_start:, 0].values
+thresh = test_x.std()
+
+# finding all peaks
+peaks, properties = scipy.signal.find_peaks(test_x * -1, prominence=thresh)
+prominence_data = tuple(properties.values())
+plt.figure()
+plt.plot(test_x)
+plt.plot(peaks, test_x[peaks], 'x')
+
+# extracting first response/peak; first_event_index = time to first peak because windowed sweep starts at stimulus onset (520 ms)
+first_event_index = peaks[0]
+time_to_first_peak = first_event_index
+first_event_amplitude = test_x[first_event_index]
+
+# finding latency to response, i.e. the time at which current exceeds 3x std of baseline
+baseline_start = baseline_start * fs
+baseline_end = baseline_end * fs
+baseline = new_mean_baseline(data, fs, baseline_start, baseline_end)
+baseline_std = new_std_baseline(data, fs, baseline_start, baseline_end)
+
+
+
+

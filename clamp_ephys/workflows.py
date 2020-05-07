@@ -46,8 +46,7 @@ class cell:
         Finds the baseline and the first peak, defined as the first event to exceed
         threshold greater than 3 std above the baseline (defined as last 3s of the sweep)
         '''
-        self.baseline_raw = 
-
+        self.baseline_raw = clamp.new_mean_baseline(self.traces, self.fs, stim_time, pre_stim)
 
 
     def get_raw_peaks(self, stim_time, post_stim, polarity='-', pre_stim=100):
