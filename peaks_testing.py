@@ -2,7 +2,10 @@ import clamp_ephys
 import pandas as pd
 import os
 import scipy
+import matplotlib
+%matplotlib
 import matplotlib.pyplot as plt
+import numpy as np
 
 '''####################### SET PROPER PATH_TO_DATA_NOTES ########################## '''
 data_path = os.path.join(os.getcwd(), 'test_data', 'p2_data_notes.csv')
@@ -21,7 +24,7 @@ amp_factor = 1          # scaler for making plots in pA
 fs = 25                 # kHz, the sampling frequency
 
 '''#################### THIS LOOP RUNS THE SINGLE CELL ANALYSIS #################### '''
-cell_path = os.path.join(os.getcwd(), 'test_data', 'JH200303_c1_light100.ibw')
+cell_path = os.path.join(os.getcwd(), 'test_data', 'JH200311_c1_light100.ibw')
 data = clamp_ephys.workflows.cell(cell_path, fs=fs, path_to_data_notes=data_path, timepoint='p2', amp_factor=amp_factor)
 
 data.get_raw_peaks(stim_time, post_stim)
@@ -38,7 +41,6 @@ testing for kinetics
     - any peaks MUST be positive, so need to invert for sure
     - 
 '''
-%matplotlib widget
 peaks = data.peaks_filtered_indices
 subtracted_data = data.traces_filtered - data.baseline_filtered
 
@@ -101,25 +103,54 @@ hw_df.columns = ['Max peak half-width (ms)']
 # test new class function
 data.get_max_peak_half_width()
 
-#%%
-# jane's messes for extracting first response from each sweep
 
 # drop first 520 s from sweep to account for TP and only look at time from stimulus onset to end of sweep
 window_start = (stim_time + 20) * fs
-test_x = subtracted_data.iloc[window_start:, 0].values
-thresh = 3 * test_x.std()
 
-# finding all peaks; should we change thresh to 3x std?
-peaks, properties = scipy.signal.find_peaks(test_x * -1, prominence=thresh)
-prominence_data = tuple(properties.values())
-plt.figure()
-plt.plot(test_x)
-plt.plot(peaks, test_x[peaks], 'x')
+# this below would be outside of the per-cell loop
+p2_kinetics_summary = pd.DataFrame()
 
-# extracting first response/peak; first_event_index = time to first peak because windowed sweep starts at stimulus onset (520 ms)
-first_event_index = [peaks[0]]
-time_to_first_peak = peaks[0]
-first_event_amplitude = test_x[time_to_first_peak]
+columns_index = ['peak_index', 'prominence', '10 to 90% RT (ms)', 'half-width (ms)']
+first_peaks_properties_df = pd.DataFrame()
+
+for sweep in range(len(subtracted_data.columns)):
+    
+    x = subtracted_data.iloc[window_start:, sweep].values
+    thresh = 3 * x.std()
+
+    # finding all peaks
+    peaks, properties = scipy.signal.find_peaks(x * -1, prominence=thresh)
+    prominence_data = tuple(properties.values())
+    plt.figure()
+    plt.plot(x)
+    plt.plot(peaks, x[peaks], 'x')
+
+    '''
+    ten_widths, ten_height, ten_left, ten_right = scipy.signal.peak_widths(x * -1, peaks, rel_height=0.9, prominence_data=prominence_data)
+    ninety_widths, ninety_height, ninety_left, ninety_right = scipy.signal.peak_widths(x * -1, peaks, rel_height=0.1, prominence_data=prominence_data)
+    half_widths, hw_height, hw_left, hw_right = scipy.signal.peak_widths(x * -1, peaks, rel_height=0.5, prominence_data=prominence_data)
+    full_widths, fw_height, fw_left, fw_right = scipy.signal.peak_widths(x * -1, peaks, rel_height=1, prominence_data=prominence_data)
+
+    hw_height = hw_height * -1
+    fw_height = fw_height * -1
+    ten_height = ten_height * -1
+    ninety_height = ninety_height * -1
+
+    ten_to_ninety = (ninety_left - ten_left) / fs
+    prominences = properties['prominences']
+    hw_time = half_widths / fs
+
+    peaks_array = np.array((peaks, prominences, ten_to_ninety, hw_time)).T
+    peaks_data = pd.DataFrame(peaks_array, columns=columns_index)
+
+    # extracting kinetics of the first response/peak
+    first_peak_data = peaks_data.iloc[0]
+    first_peaks_properties_df = pd.concat([first_peaks_properties_df, first_peak_data], axis=1, ignore_index=True).T
+    '''
+    plt.plot(x)
+
+first_peaks_properties_avg = first_peaks_properties_df.mean
+p2_kinetics_summary = pd.concat([p2_kinetics_summary, first_peaks_properties_avg], ignore_index=True)
 
 '''
 # finding latency to response, i.e. the time at which current exceeds 3x std of baseline

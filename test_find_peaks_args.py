@@ -2,6 +2,8 @@ import clamp_ephys
 import pandas as pd
 import os
 import scipy
+import matplotlib
+%matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -20,7 +22,7 @@ amp_factor = 1      # scaler for making plots in pA
 fs = 25             # kHz, the sampling frequency
 
 '''#################### THIS LOOP RUNS THE SINGLE CELL ANALYSIS #################### '''
-cell_path = os.path.join(os.getcwd(), 'test_data', 'JH200303_c1_light100.ibw')
+cell_path = os.path.join(os.getcwd(), 'test_data', 'JH200311_c1_light100.ibw')
 data = clamp_ephys.workflows.cell(cell_path, fs=fs, path_to_data_notes=data_path, timepoint='p2', amp_factor=amp_factor)
 
 data.get_raw_peaks(stim_time, post_stim)
@@ -38,7 +40,7 @@ testing for kinetics
     - 
 '''
 
-non_sub_x = data.traces_filtered.iloc[1000:, 0].values
+non_sub_x = data.traces_filtered.iloc[1000:, 21].values
 thresh_non_sub = non_sub_x.std()
 x = non_sub_x * -1
 # parameters for finding peaks and widths
@@ -48,6 +50,7 @@ prominence = thresh_non_sub*3
 wlens = [None, 100, 250, 500, 1000, 1250, 2000, 5000, 10000, 25000]
 
 peaks_df = pd.DataFrame()
+
 for wlen in wlens:
     peaks, properties = scipy.signal.find_peaks(x, prominence=prominence, wlen=wlen)
 
@@ -93,6 +96,7 @@ prominence = peaks_df.loc[:, (slice(None), 'prominence')]
 rt = peaks_df.loc[:, (slice(None), '10 to 90% RT (ms)')]
 hw = peaks_df.loc[:, (slice(None), 'half-width (ms)')]
 
+
  '''
  Notes on loop for changing wlen
  - idea of wlen is to limit the signal area from a peak to determine the prominence
@@ -109,3 +113,4 @@ hw = peaks_df.loc[:, (slice(None), 'half-width (ms)')]
  - 10-90 could have some longer (not real) times when there are two close events where the 10% of event 2 is
    clearly before the event starts 
     - solution here would be to make a projection to baseline, which seems complicated, must be a better way
+'''

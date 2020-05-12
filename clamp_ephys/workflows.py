@@ -216,6 +216,56 @@ class cell:
         self.summary_data = pd.concat([self.metadata, self.responses, summary_data], axis=1)
 
 
+    def plot_sweeps(self, save_fig=False, path_to_figures=None):
+        '''
+        Plots all the sweeps in every cell.
+        Parameters
+        ----------
+        timepoint: str
+            for labeling graph, what injection timepoint p2 or p14
+        save_fig: bool 
+            tells function to either save and close the plot (true) or display the plot (false)
+        path_to_figures: str
+            path to figures IF save_fig=True
+        Returns
+        -------
+        fig: matplotlib.pyplot fig
+            the figure object created
+        '''
+        peaks = self.peaks_filtered_indices
+        subtracted_data = self.traces_filtered - self.baseline_filtered
+
+        window_start = (stim_time + 20) * fs
+        baseline_start = 3000 * fs
+
+        for sweep in range(len(subtracted_data.columns)):
+        
+            # using non-subtracted data so I can see which sweeps to drop
+            # window omits TP and pre-stimulus time
+            x = self.traces_filtered.iloc[window_start:, sweep].values
+            baseline = self.traces_filtered.iloc[baseline_start:, sweep].values
+            thresh = 3 * baseline.std()
+            sweep_length = len(x)
+            sweep_time = np.arange(0, sweep_length/fs, 1/fs)
+
+            # finding all peaks
+            peaks, properties = scipy.signal.find_peaks(x * -1, prominence=thresh)
+            prominence_data = tuple(properties.values())
+
+            # correct peaks time for fs
+            peaks_corr = peaks/fs
+
+            fig = plt.figure()
+            fig.suptitle('Sweep {}'.format(sweep))
+            plt.plot(sweep_time, x)
+            plt.plot(peaks_corr, x[peaks], 'x')
+
+            filename = '{}_sweep_{}.png'.format(self.file_id, sweep)
+            fig_path = os.path.join(r'C:\Users\jhuang\Documents\phd_projects\Injected_GC_data\VC_pairs\figures\p2\sweeps_incl_depol', path, filename)
+            metadata.check_create_dirs(fig_path)
+            fig.savefig(fig_path, dpi=300, format='png')
+
+
     def plot_peaks_rs(self, amp_factor, save_fig=False, path_to_figures=None):
         '''
         Takes the data traces and plots the current summary of peaks plot
