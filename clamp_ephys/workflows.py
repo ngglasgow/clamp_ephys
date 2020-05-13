@@ -232,11 +232,12 @@ class cell:
         fig: matplotlib.pyplot fig
             the figure object created
         '''
-        peaks = self.peaks_filtered_indices
+        # doesn't seem like you use peaks here below, but if you did you'd need to change names because overwriting below.
+        # peaks = self.peaks_filtered_indices
         subtracted_data = self.traces_filtered - self.baseline_filtered
 
-        window_start = (stim_time + 20) * fs
-        baseline_start = 3000 * fs
+        window_start = (stim_time + 20) * self.fs
+        baseline_start = 3000 * self.fs
 
         for sweep in range(len(subtracted_data.columns)):
         
@@ -246,14 +247,14 @@ class cell:
             baseline = self.traces_filtered.iloc[baseline_start:, sweep].values
             thresh = 3 * baseline.std()
             sweep_length = len(x)
-            sweep_time = np.arange(0, sweep_length/fs, 1/fs)
+            sweep_time = np.arange(0, sweep_length/self.fs, 1/self.fs)
 
             # finding all peaks
             peaks, properties = scipy.signal.find_peaks(x * -1, prominence=thresh)
             prominence_data = tuple(properties.values())
 
             # correct peaks time for fs
-            peaks_corr = peaks/fs
+            peaks_corr = peaks/self.fs
 
             fig = plt.figure()
             fig.suptitle('Sweep {}'.format(sweep))
