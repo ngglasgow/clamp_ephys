@@ -13,7 +13,7 @@ tables = paths.tables
 figures = paths.figures
 
 '''####################### SET PROPER PATH_TO_DATA_NOTES ########################## '''
-data_path = r"C:\Users\jhuang\Documents\phd_projects\Injected_GC_data\VC_pairs\tables\\p2_data_notes.csv"
+data_path = '/home/jhuang/Documents/phd_projects/Injected_GC_data/VC_pairs/tables/p2_data_notes.csv'
 
 ''' ################### SET/CHECK THESE PARAMETERS BEFORE RUNNING ################## '''
 lowpass_freq = 500      # Hz
@@ -31,6 +31,8 @@ fs = 25                 # kHz, the sampling frequency
 '''#################### THIS LOOP RUNS THE SINGLE CELL ANALYSIS #################### '''
 #cell_path = os.path.join(r'C:\Users\jhuang\Documents\phd_projects\Injected_GC_data\VC_pairs\data\p2', 'JH200304_c2_light100.ibw')
 
+path_to_figures = os.path.join(figures, 'p2', 'sweeps_wdepol')
+
 for path in paths.p2_paths:
 
     data = clamp_ephys.workflows.cell(path, fs=fs, path_to_data_notes=data_path, timepoint='p2', amp_factor=amp_factor)
@@ -39,48 +41,11 @@ for path in paths.p2_paths:
     data.filter_traces(lowpass_freq)
     data.get_filtered_peaks(stim_time, post_stim)
 
-    '''===================================================================================
-    testing for kinetics
-    - notes on find_peaks, peak_prominence, and peak_widths
-        - use std of entire signal as a thresholding - std of baseline seems noisier
-        - should std_baseline allow pre_stim as well? don't remember why it doesn't...
-        - heights are being calculated as simply above 0, so just x, not that useful
-        - prominence is acconting for lowest contour, so inherently corrects for baseline (very immediate baseline)
-        - any peaks MUST be positive, so need to invert for sure
-        - 
-    '''
     peaks = data.peaks_filtered_indices
-    subtracted_data = data.traces_filtered - data.baseline_filtered
+    
+    # plotting filtered, unsubtracted traces
+    sweeps = data.traces_filtered
 
-    window_start = (stim_time + 20) * fs
-    baseline_start = 3000 * fs
+    for sweep in range(len(sweeps.columns)):
 
-    # this below would be outside of the per-cell loop
-
-    for sweep in range(len(subtracted_data.columns)):
-        
-        # using non-subtracted data so I can see which sweeps to drop
-        # window omits TP and pre-stimulus time
-        x = data.traces_filtered.iloc[window_start:, sweep].values
-        baseline = data.traces_filtered.iloc[baseline_start:, sweep].values
-        thresh = 3 * baseline.std()
-        sweep_length = len(x)
-        sweep_time = np.arange(0, sweep_length/fs, 1/fs)
-
-        # finding all peaks
-        peaks, properties = scipy.signal.find_peaks(x * -1, prominence=thresh)
-        prominence_data = tuple(properties.values())
-
-        # correct peaks time for fs
-        peaks_corr = peaks/fs
-
-        fig = plt.figure()
-        fig.suptitle('Sweep {}'.format(sweep))
-        plt.plot(sweep_time, x)
-        plt.plot(peaks_corr, x[peaks], 'x')
-
-        filename = '{}_sweep_{}.png'.format(file_id, sweep)
-        fig_path = os.path.join(r'C:\Users\jhuang\Documents\phd_projects\Injected_GC_data\VC_pairs\figures\p2\sweeps_incl_depol', path, filename)
-        metadata.check_create_dirs(fig_path)
-        fig.savefig(fig_path, dpi=300, format='png')
-
+        data.plot_sweeps(sweep, stim_time, baseline_start, save_fig=True, path_to_figures=path_to_figures)

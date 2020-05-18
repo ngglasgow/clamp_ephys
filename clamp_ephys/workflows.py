@@ -216,13 +216,17 @@ class cell:
         self.summary_data = pd.concat([self.metadata, self.responses, summary_data], axis=1)
 
 
-    def plot_sweeps(self, save_fig=False, path_to_figures=None):
+    def plot_sweeps(self, sweep, stim_time, baseline_start, save_fig=False, path_to_figures=None):
         '''
         Plots all the sweeps in every cell.
         Parameters
         ----------
-        timepoint: str
-            for labeling graph, what injection timepoint p2 or p14
+        sweep: int
+            sweep number being plotted, 0-indexed
+        stim_time: int
+            time of stimulus onset, ms
+        baseline_start: int
+            time to start measuring the baseline, ms
         save_fig: bool 
             tells function to either save and close the plot (true) or display the plot (false)
         path_to_figures: str
@@ -232,39 +236,37 @@ class cell:
         fig: matplotlib.pyplot fig
             the figure object created
         '''
-        # doesn't seem like you use peaks here below, but if you did you'd need to change names because overwriting below.
-        # peaks = self.peaks_filtered_indices
-        subtracted_data = self.traces_filtered - self.baseline_filtered
 
         window_start = (stim_time + 20) * self.fs
-        baseline_start = 3000 * self.fs
+        baseline_window_start = baseline_start * self.fs
 
-        for sweep in range(len(subtracted_data.columns)):
+        # using filtered, non-subtracted data so I can see which sweeps to drop
+        # window omits TP and pre-stimulus time
+        x = self.traces_filtered.iloc[window_start:, sweep].values
+        baseline = self.traces_filtered.iloc[baseline_window_start:, sweep].values
+        thresh = 3 * baseline.std()
+        sweep_length = len(x)
+        sweep_time = np.arange(0, sweep_length/self.fs, 1/self.fs)
+
+        # finding all peaks
+        # peaks, properties = scipy.signal.find_peaks(x * -1, prominence=thresh)
         
-            # using non-subtracted data so I can see which sweeps to drop
-            # window omits TP and pre-stimulus time
-            x = self.traces_filtered.iloc[window_start:, sweep].values
-            baseline = self.traces_filtered.iloc[baseline_start:, sweep].values
-            thresh = 3 * baseline.std()
-            sweep_length = len(x)
-            sweep_time = np.arange(0, sweep_length/self.fs, 1/self.fs)
+        # correct peaks time for fs
+        # peaks_corrected = peaks/self.fs
 
-            # finding all peaks
-            peaks, properties = scipy.signal.find_peaks(x * -1, prominence=thresh)
-            prominence_data = tuple(properties.values())
+        fig = plt.figure()
+        fig.suptitle('Sweep {}'.format(sweep))
+        plt.plot(sweep_time, x)
+        # plt.plot(peaks_corrected, x[peaks], 'x')
 
-            # correct peaks time for fs
-            peaks_corr = peaks/self.fs
+        filename = '{}_sweep_{}.png'.format(self.file_id, sweep)
+        base_path = os.path.join(path_to_figures, self.file_id)
+        metadata.check_create_dirs(base_path)
 
-            fig = plt.figure()
-            fig.suptitle('Sweep {}'.format(sweep))
-            plt.plot(sweep_time, x)
-            plt.plot(peaks_corr, x[peaks], 'x')
+        path = os.path.join(base_path, filename)
+        fig.savefig(path, dpi=300, format='png')
+        plt.close(fig)
 
-            filename = '{}_sweep_{}.png'.format(self.file_id, sweep)
-            fig_path = os.path.join(r'C:\Users\jhuang\Documents\phd_projects\Injected_GC_data\VC_pairs\figures\p2\sweeps_incl_depol', path, filename)
-            metadata.check_create_dirs(fig_path)
-            fig.savefig(fig_path, dpi=300, format='png')
 
 
     def plot_peaks_rs(self, amp_factor, save_fig=False, path_to_figures=None):
@@ -510,7 +512,7 @@ class file_structure:
                 home_dir = '/Volumes/Urban'
 
             elif machine == 'Linux':
-                home_dir = os.path.join(os.path.expanduser('~'), 'urban/neurobio/Huang')
+                home_dir = '/home/jhuang/Documents/phd_projects'
 
             elif machine == 'Windows':
                 home_dir = r"C:\Users\jhuang\Documents\phd_projects"
