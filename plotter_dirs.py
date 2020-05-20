@@ -32,7 +32,7 @@ data_notes_choose.default_path = os.path.expanduser('~')
 data_notes_choose.use_dir_icons = True
 data_notes_choose.title = '<b>Select Data Notes</b>'
 
-slider = widgets.IntSlider(value=0, min=0, max=10, step=1, continuous_update=False)
+sweep_slider = widgets.IntSlider(value=0, min=0, max=10, step=1, continuous_update=False)
 
 open_cell = widgets.Button(description='Open Cell', tooltip='open selected cell file with data notes')
 textout = widgets.Output()
@@ -47,7 +47,7 @@ def open_cell_click(button):
     trace = cell.traces_filtered[0]
     time = np.arange(0, len(trace) / cell.fs, 1 / cell.fs)
     ntraces = len(cell.traces_filtered.columns)
-    slider.max = ntraces
+    sweep_slider.max = ntraces
 
     with textout:
         print(f'{file} opened')
@@ -60,4 +60,7 @@ def open_cell_click(button):
 
 open_cell.on_click(open_cell_click)
 
-display(data_choose, data_notes_choose, open_cell, textout, slider, plotout)
+display(data_choose, data_notes_choose, open_cell, textout, sweep_slider, plotout)
+
+test_button = widgets.Button(icon='angle-right')
+display(test_button)
