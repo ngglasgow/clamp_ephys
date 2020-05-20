@@ -1,3 +1,4 @@
 *.pyc
 .spyproject/
 .vscode/settings.json
+*.tif
