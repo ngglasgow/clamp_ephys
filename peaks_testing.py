@@ -22,12 +22,13 @@ pre_tp = 3              # ms, amount of time before test pulse start to get base
 unit_scaler = -12       # unitless, scaler to get back to A, from pA
 amp_factor = 1          # scaler for making plots in pA
 fs = 25                 # kHz, the sampling frequency
+width = 2               # ms, the width necessary for an event to be identified as synaptic
 
 '''#################### THIS LOOP RUNS THE SINGLE CELL ANALYSIS #################### '''
-cell_path = os.path.join(os.getcwd(), 'test_data', 'JH200311_c1_light100.ibw')
+cell_path = '/home/jhuang/Documents/phd_projects/Injected_GC_data/VC_pairs/data/p2/JH200313_c3_light100.ibw'
 data = clamp_ephys.workflows.cell(cell_path, fs=fs, path_to_data_notes=data_path, timepoint='p2', amp_factor=amp_factor)
 
-data.get_raw_peaks(stim_time, post_stim)
+data.get_raw_peaks(stim_time, post_stim, polarity='-', baseline_start=baseline_start, baseline_end=baseline_end)
 data.filter_traces(lowpass_freq)
 data.get_filtered_peaks(stim_time, post_stim)
 
@@ -41,68 +42,11 @@ testing for kinetics
     - any peaks MUST be positive, so need to invert for sure
     - 
 '''
-peaks = data.peaks_filtered_indices
-subtracted_data = data.traces_filtered - data.baseline_filtered
+# peaks = data.peaks_filtered_indices
+# subtracted_data = data.traces_filtered - data.baseline_filtered
 
-# finds all peaks, and prominences for an entire trace
-test_x = subtracted_data.iloc[1000:, 0].values
-non_sub_x = data.traces_filtered.iloc[1000:, 0].values
-thresh = test_x.std()
-thresh_non_sub = non_sub_x.std()
-
-peaks, properties = scipy.signal.find_peaks(non_sub_x * -1, prominence=thresh)
-prominence_data = tuple(properties.values())
-plt.figure()
-plt.plot(non_sub_x)
-plt.plot(peaks, non_sub_x[peaks], 'x')
-
-half_widths, hw_height, hw_left, hw_right = scipy.signal.peak_widths(non_sub_x * -1, peaks, rel_height=0.5, prominence_data=prominence_data)
-full_widths, fw_height, fw_left, fw_right = scipy.signal.peak_widths(non_sub_x * -1, peaks, rel_height=1, prominence_data=prominence_data)
-hw_height = hw_height * -1
-fw_height = fw_height * -1
-
-plt.figure()
-plt.plot(non_sub_x)
-plt.plot(peaks, non_sub_x[peaks], 'x')
-plt.hlines(hw_height, xmin=hw_left, xmax=hw_right, color='C2')
-plt.hlines(fw_height, xmin=fw_left, xmax=fw_right, color='C3')
-
-# find half width of just a defined peak
-test_peak = [peaks[2]]
-test_hw, test_hw_height, test_hw_left, test_hw_right = scipy.signal.peak_widths(non_sub_x * -1, test_peak, rel_height=0.5)
-test_hw_height = test_hw_height * -1
-
-plt.figure()
-plt.plot()
-plt.plot(non_sub_x)
-plt.plot(test_peak, non_sub_x[test_peak], 'x')
-plt.hlines(test_hw_height, test_hw_left, test_hw_right, color='C2')
-
-# find the half width of a barely respond defined peak in window
-x = data.traces_filtered[0].values
-peak = [data.peaks_filtered_indices[0]]
-
-half_widths = scipy.signal.peak_widths(x * -1, peak, rel_height=0.5)
-plt.figure()
-plt.plot()
-plt.plot(x * -1)
-plt.plot(peak, x[peak] * -1, 'x')
-plt.hlines(*half_widths[1:], color='C2')
-hw = half_widths[0]
-
-hw_df = pd.DataFrame()
-for i in range(len(data.traces_filtered.columns)):
-    x = data.traces_filtered[i].values * -1
-    peak = [data.peaks_filtered_indices[i]]
-    hw, hw_height, hw_left, hw_right = scipy.signal.peak_widths(x, peak, rel_height=0.5)
-    hw_time = hw / fs
-    hw_df = pd.concat([hw_df, pd.DataFrame(hw_time)], ignore_index=True)
-hw_df.columns = ['Max peak half-width (ms)']
-
-#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# test new class function
-data.get_max_peak_half_width()
-
+# finding events using subtracted, unfiltered data
+sweeps = data.traces - data.new_baseline_raw
 
 # drop first 520 s from sweep to account for TP and only look at time from stimulus onset to end of sweep
 window_start = (stim_time + 20) * fs
@@ -113,17 +57,18 @@ p2_kinetics_summary = pd.DataFrame()
 columns_index = ['peak_index', 'prominence', '10 to 90% RT (ms)', 'half-width (ms)']
 first_peaks_properties_df = pd.DataFrame()
 
-for sweep in range(len(subtracted_data.columns)):
+for sweep in range(len(sweeps.columns)):
     
-    x = subtracted_data.iloc[window_start:, sweep].values
-    thresh = 3 * x.std()
+    trace = sweeps.iloc[window_start:, sweep].values
+    thresh = 2 * trace.std()
 
     # finding all peaks
-    peaks, properties = scipy.signal.find_peaks(x * -1, prominence=thresh)
+    peaks, properties = scipy.signal.find_peaks(trace * -1, prominence=thresh, width=width*fs)
     prominence_data = tuple(properties.values())
-    plt.figure()
-    plt.plot(x)
-    plt.plot(peaks, x[peaks], 'x')
+    fig = plt.figure()
+    fig.suptitle('Sweep {}'.format(sweep))
+    plt.plot(trace)
+    plt.plot(peaks, trace[peaks], 'x')
 
     '''
     ten_widths, ten_height, ten_left, ten_right = scipy.signal.peak_widths(x * -1, peaks, rel_height=0.9, prominence_data=prominence_data)
@@ -147,7 +92,7 @@ for sweep in range(len(subtracted_data.columns)):
     first_peak_data = peaks_data.iloc[0]
     first_peaks_properties_df = pd.concat([first_peaks_properties_df, first_peak_data], axis=1, ignore_index=True).T
     '''
-    plt.plot(x)
+    plt.plot(trace)
 
 first_peaks_properties_avg = first_peaks_properties_df.mean
 p2_kinetics_summary = pd.concat([p2_kinetics_summary, first_peaks_properties_avg], ignore_index=True)

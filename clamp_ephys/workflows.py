@@ -50,12 +50,13 @@ class cell:
 
 
 
-    def get_raw_peaks(self, stim_time, post_stim, polarity='-', pre_stim=100):
+    def get_raw_peaks(self, stim_time, post_stim, polarity='-', pre_stim=100, baseline_start=3000, baseline_end=6000):
         '''
         Finds the baseline and peaks of the raw traces based on passthrough arguments to clamp.
         adds peaks_raw attribute to data object: pandas.Series
         '''
         self.baseline_raw = clamp.mean_baseline(self.traces, self.fs, stim_time, pre_stim)
+        self.new_baseline_raw = clamp.new_mean_baseline(self.traces, self.fs, baseline_start, baseline_end)
         self.peaks_raw = clamp.epsc_peak(self.traces, self.baseline_raw, self.fs, stim_time, post_stim, polarity)
         self.mean_baseline_raw = clamp.mean_baseline(self.mean_traces, self.fs, stim_time, pre_stim)
         self.mean_peak_raw, peak_index = clamp.epsc_peak(self.mean_traces, self.mean_baseline_raw, self.fs, stim_time, post_stim, polarity, index=True)
@@ -127,7 +128,6 @@ class cell:
         # plt.hlines(*self.fwhm[1:], color="C2")
         # plt.show()
       
-
 
     def get_series_resistance(self, tp_start, vm_jump, pre_tp, unit_scaler):
         '''

@@ -7,6 +7,10 @@ import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 
+''' This file loops through each .ibw file in the p2 directory and plots all individual 
+sweeps for each cell.
+'''
+
 '''####################### SET THE PROPER PATH YOU WANT ########################### '''
 paths = clamp_ephys.workflows.file_structure('local', 'Injected_GC_data/VC_pairs')
 tables = paths.tables

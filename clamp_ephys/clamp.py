@@ -35,15 +35,15 @@ def new_mean_baseline(data, fs, baseline_start, baseline_end=6000):
     baseline: float or pandas.Series
         The mean baseline over the defined window
     '''
-    start = baseline_start_time * fs
-    stop = baseline_end_time * fs
+    start = baseline_start * fs
+    stop = baseline_end * fs
     window = data.iloc[start:stop]
     baseline = window.mean()
 
     return baseline
 
 
-def new_std_baseline(data, fs, baseline_start_time, baseline_end_time=600):
+def new_std_baseline(data, fs, baseline_start, baseline_end=6000):
     '''
     Find the mean baseline in a given time series
     Parameters
@@ -52,18 +52,18 @@ def new_std_baseline(data, fs, baseline_start_time, baseline_end_time=600):
         The time series data for which you want a baseline.
     fs: int or float
         The sampling frequency in kHz.
-    stim_time: int or float
-        The time in ms when stimulus is triggered.
-    pre_stim: int or float
-        Time in ms before the stimulus trigger over which baseline is measured.
+    baseline_start: int or float
+        The time in ms when baseline starts.
+    baseline_end: int or float
+        The length of the sweep and the time when baseline ends.
 
     Returns
     -------
     baseline: float or pandas.Series
         The mean baseline over the defined window
     '''
-    start = baseline_start_time * fs
-    stop = baseline_end_time * fs
+    start = baseline_start * fs
+    stop = baseline_end * fs
     window = data.iloc[start:stop]
     std = window.std()
 
