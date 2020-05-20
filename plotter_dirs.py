@@ -64,3 +64,4 @@ display(data_choose, data_notes_choose, open_cell, textout, sweep_slider, plotou
 
 test_button = widgets.Button(icon='angle-right')
 display(test_button)
+
