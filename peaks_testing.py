@@ -103,10 +103,11 @@ for sweep in range(len(sweeps.columns)):
             current_ydata = sweeps.iloc[peak:decay_end+1, sweep].values
             
             current_peak0 = sweeps.iloc[peak, sweep] * -1
-            starting_params = [current_peak0, 2]
+            tau0 = 2*fs
+            starting_params = [current_peak0, tau]
             
             popt, pcov = scipy.optimize.curve_fit(f=decay_func, xdata=time_xdata, ydata=current_ydata, p0=starting_params)
-            current_peak, tau, = popt
+            current_peak, tau = popt
             
             peak_index += 1
 
