@@ -3,7 +3,7 @@ import pandas as pd
 import os
 import scipy
 import matplotlib
-%matplotlib
+#%matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -69,10 +69,10 @@ for sweep in range(len(sweeps.columns)):
         print('No peaks in sweep {}'.format(sweep))
     else:
         prominence_data = list(properties.values())[0:3]
-        fig = plt.figure()
-        fig.suptitle('Sweep {}'.format(sweep))
-        plt.plot(trace)
-        plt.plot(peaks, trace[peaks], 'x')
+        # fig = plt.figure()
+        # fig.suptitle('Sweep {}'.format(sweep))
+        # plt.plot(trace)
+        # plt.plot(peaks, trace[peaks], 'x')
 
         # calculate 10 to 90% and FWHM
         ten_widths, ten_height, ten_left, ten_right = scipy.signal.peak_widths(trace * -1, peaks, rel_height=0.9, prominence_data=prominence_data)
@@ -95,21 +95,21 @@ for sweep in range(len(sweeps.columns)):
 
         for peak in peaks:
             
-            def decay_func(time, current_peak, tau, noise):
-	            return current_peak * np.exp(-time/tau) + noise
+            def decay_func(time, current_peak, tau):
+	            return current_peak * np.exp(-time/tau)
 
             decay_end = fw_right[peak_index].astype(int) # indexing needs to be a whole number
             time_xdata = np.arange(peak, decay_end+1)
-            current_ydata = sweeps.iloc[peak:decay_end, sweep].values
+            current_ydata = sweeps.iloc[peak:decay_end+1, sweep].values
             
-            def fit_decay(time_xdata, current_ydata):
-                popt, pcov = scipy.optimize.curve_fit(decay_func, time_xdata, current_ydata)
-                current_peak, tau, noise = popt
-                return current_peak, tau, noise
-
+            current_peak0 = sweeps.iloc[peak, sweep] * -1
+            starting_params = [current_peak0, 2]
+            
+            popt, pcov = scipy.optimize.curve_fit(f=decay_func, xdata=time_xdata, ydata=current_ydata, p0=starting_params)
+            current_peak, tau, = popt
+            
             peak_index += 1
 
-        
         peaks_array = np.array((peaks, prominences, ten_to_ninety, hw_time)).T
         peaks_data = pd.DataFrame(peaks_array, columns=columns_index)
 
@@ -127,33 +127,33 @@ for sweep in range(len(sweeps.columns)):
 first_peaks_properties_avg = pd.DataFrame(first_peaks_properties_df.mean(axis=0)).T
 p2_kinetics_summary = pd.concat([p2_kinetics_summary, first_peaks_properties_avg], axis=0, ignore_index=True)
 
-'''
-# finding latency to response, i.e. the time at which current exceeds 3x std of baseline
-baseline_start = baseline_start * fs
-baseline_end = baseline_end * fs
-baseline = new_mean_baseline(data, fs, baseline_start, baseline_end)
-baseline_std = new_std_baseline(data, fs, baseline_start, baseline_end)
-'''
+# '''
+# # finding latency to response, i.e. the time at which current exceeds 3x std of baseline
+# baseline_start = baseline_start * fs
+# baseline_end = baseline_end * fs
+# baseline = new_mean_baseline(data, fs, baseline_start, baseline_end)
+# baseline_std = new_std_baseline(data, fs, baseline_start, baseline_end)
+# '''
 
-# find 10-90% rise time
-# asking to eval at rel_height equivalent to evaluating at height of Peak(height) - prominence * rel_height
-# so evaluating at rel_height = 0.1 does not equal evaluating at 10% of Peak(height)
-test_hw, test_hw_height, test_hw_left, test_hw_right = scipy.signal.peak_widths(test_x * -1, first_event_index, rel_height=0.1)
-test_hw_height = test_hw_height * -1
+# # find 10-90% rise time
+# # asking to eval at rel_height equivalent to evaluating at height of Peak(height) - prominence * rel_height
+# # so evaluating at rel_height = 0.1 does not equal evaluating at 10% of Peak(height)
+# test_hw, test_hw_height, test_hw_left, test_hw_right = scipy.signal.peak_widths(test_x * -1, first_event_index, rel_height=0.1)
+# test_hw_height = test_hw_height * -1
 
-plt.figure()
-plt.plot()
-plt.plot(test_x)
-plt.plot(first_event_index, test_x[first_event_index], 'x')
-plt.hlines(test_hw_height, test_hw_left, test_hw_right, color='C2')
+# plt.figure()
+# plt.plot()
+# plt.plot(test_x)
+# plt.plot(first_event_index, test_x[first_event_index], 'x')
+# plt.hlines(test_hw_height, test_hw_left, test_hw_right, color='C2')
 
-test_hw, test_hw_height, test_hw_left, test_hw_right = scipy.signal.peak_widths(test_x * -1, first_event_index, rel_height=0.9)
-test_hw_height = test_hw_height * -1
+# test_hw, test_hw_height, test_hw_left, test_hw_right = scipy.signal.peak_widths(test_x * -1, first_event_index, rel_height=0.9)
+# test_hw_height = test_hw_height * -1
 
-plt.figure()
-plt.plot()
-plt.plot(test_x)
-plt.plot(first_event_index, test_x[first_event_index], 'x')
-plt.hlines(test_hw_height, test_hw_left, test_hw_right, color='C2')
+# plt.figure()
+# plt.plot()
+# plt.plot(test_x)
+# plt.plot(first_event_index, test_x[first_event_index], 'x')
+# plt.hlines(test_hw_height, test_hw_left, test_hw_right, color='C2')
 
 
