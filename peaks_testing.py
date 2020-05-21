@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 '''####################### SET PROPER PATH_TO_DATA_NOTES ########################## '''
-data_path = os.path.join(os.getcwd(), 'test_data', 'p2_data_notes.csv')
+data_path = '/home/jhuang/Documents/phd_projects/Injected_GC_data/VC_pairs/tables/p2_data_notes.csv'
 
 ''' ################### SET/CHECK THESE PARAMETERS BEFORE RUNNING ################## '''
 lowpass_freq = 500      # Hz
@@ -22,10 +22,10 @@ pre_tp = 3              # ms, amount of time before test pulse start to get base
 unit_scaler = -12       # unitless, scaler to get back to A, from pA
 amp_factor = 1          # scaler for making plots in pA
 fs = 25                 # kHz, the sampling frequency
-width = 2               # ms, the width necessary for an event to be identified as synaptic
+width = 3               # ms, the width necessary for an event to be identified as synaptic
 
 '''#################### THIS LOOP RUNS THE SINGLE CELL ANALYSIS #################### '''
-cell_path = '/home/jhuang/Documents/phd_projects/Injected_GC_data/VC_pairs/data/p2/JH200313_c3_light100.ibw'
+cell_path = '/home/jhuang/Documents/phd_projects/Injected_GC_data/VC_pairs/data/p2/JH200313_c6_spontaneous_depol.ibw'
 data = clamp_ephys.workflows.cell(cell_path, fs=fs, path_to_data_notes=data_path, timepoint='p2', amp_factor=amp_factor)
 
 data.get_raw_peaks(stim_time, post_stim, polarity='-', baseline_start=baseline_start, baseline_end=baseline_end)
@@ -60,42 +60,72 @@ first_peaks_properties_df = pd.DataFrame()
 for sweep in range(len(sweeps.columns)):
     
     trace = sweeps.iloc[window_start:, sweep].values
-    thresh = 2 * trace.std()
+    thresh = 2.5 * trace.std()
 
-    # finding all peaks
-    peaks, properties = scipy.signal.find_peaks(trace * -1, prominence=thresh, width=width*fs)
-    prominence_data = tuple(properties.values())
-    fig = plt.figure()
-    fig.suptitle('Sweep {}'.format(sweep))
-    plt.plot(trace)
-    plt.plot(peaks, trace[peaks], 'x')
+    # finding and plotting all peaks
+    peaks, properties = scipy.signal.find_peaks(trace * -1, distance=0.5*fs, prominence=thresh, width=width*fs)
 
-    '''
-    ten_widths, ten_height, ten_left, ten_right = scipy.signal.peak_widths(x * -1, peaks, rel_height=0.9, prominence_data=prominence_data)
-    ninety_widths, ninety_height, ninety_left, ninety_right = scipy.signal.peak_widths(x * -1, peaks, rel_height=0.1, prominence_data=prominence_data)
-    half_widths, hw_height, hw_left, hw_right = scipy.signal.peak_widths(x * -1, peaks, rel_height=0.5, prominence_data=prominence_data)
-    full_widths, fw_height, fw_left, fw_right = scipy.signal.peak_widths(x * -1, peaks, rel_height=1, prominence_data=prominence_data)
+    if len(peaks) == 0:
+        print('No peaks in sweep {}'.format(sweep))
+    else:
+        prominence_data = list(properties.values())[0:3]
+        fig = plt.figure()
+        fig.suptitle('Sweep {}'.format(sweep))
+        plt.plot(trace)
+        plt.plot(peaks, trace[peaks], 'x')
 
-    hw_height = hw_height * -1
-    fw_height = fw_height * -1
-    ten_height = ten_height * -1
-    ninety_height = ninety_height * -1
+        # calculate 10 to 90% and FWHM
+        ten_widths, ten_height, ten_left, ten_right = scipy.signal.peak_widths(trace * -1, peaks, rel_height=0.9, prominence_data=prominence_data)
+        ninety_widths, ninety_height, ninety_left, ninety_right = scipy.signal.peak_widths(trace * -1, peaks, rel_height=0.1, prominence_data=prominence_data)
+        half_widths, hw_height, hw_left, hw_right = scipy.signal.peak_widths(trace * -1, peaks, rel_height=0.5, prominence_data=prominence_data)
+        full_widths, fw_height, fw_left, fw_right = scipy.signal.peak_widths(trace * -1, peaks, rel_height=1, prominence_data=prominence_data)
 
-    ten_to_ninety = (ninety_left - ten_left) / fs
-    prominences = properties['prominences']
-    hw_time = half_widths / fs
+        hw_height = hw_height * -1
+        fw_height = fw_height * -1
+        ten_height = ten_height * -1
+        ninety_height = ninety_height * -1
 
-    peaks_array = np.array((peaks, prominences, ten_to_ninety, hw_time)).T
-    peaks_data = pd.DataFrame(peaks_array, columns=columns_index)
+        ten_to_ninety = (ninety_left - ten_left) / fs
+        prominences = properties['prominences']
+        hw_time = half_widths / fs
 
-    # extracting kinetics of the first response/peak
-    first_peak_data = peaks_data.iloc[0]
-    first_peaks_properties_df = pd.concat([first_peaks_properties_df, first_peak_data], axis=1, ignore_index=True).T
-    '''
-    plt.plot(trace)
+        # fit exponential curve to decay phase of each peak to find tau
+        # decay phase is defined by time of peak to the right index at full width (fw_right)
+        peak_index = 0
 
-first_peaks_properties_avg = first_peaks_properties_df.mean
-p2_kinetics_summary = pd.concat([p2_kinetics_summary, first_peaks_properties_avg], ignore_index=True)
+        for peak in peaks:
+            
+            def decay_func(time, current_peak, tau, noise):
+	            return current_peak * np.exp(-time/tau) + noise
+
+            decay_end = fw_right[peak_index].astype(int) # indexing needs to be a whole number
+            time_xdata = np.arange(peak, decay_end+1)
+            current_ydata = sweeps.iloc[peak:decay_end, sweep].values
+            
+            def fit_decay(time_xdata, current_ydata):
+                popt, pcov = scipy.optimize.curve_fit(decay_func, time_xdata, current_ydata)
+                current_peak, tau, noise = popt
+                return current_peak, tau, noise
+
+            peak_index += 1
+
+        
+        peaks_array = np.array((peaks, prominences, ten_to_ninety, hw_time)).T
+        peaks_data = pd.DataFrame(peaks_array, columns=columns_index)
+
+        # extracting kinetics of the first three responses/peaks
+        first_peaks_data = peaks_data.iloc[:3] #this slice indexing works even if len(peaks) < 3
+        
+        # extract delay to response (index to first peak)
+        delay_to_response = peaks[0] / fs
+            
+        avg_first_peaks = pd.DataFrame(first_peaks_data.mean(axis=0)).T
+        avg_first_peaks.insert(0, 'delay_to_response (ms)', delay_to_response)    
+        first_peaks_properties_df = pd.concat([first_peaks_properties_df, avg_first_peaks], axis=0, ignore_index=True)
+
+
+first_peaks_properties_avg = pd.DataFrame(first_peaks_properties_df.mean(axis=0)).T
+p2_kinetics_summary = pd.concat([p2_kinetics_summary, first_peaks_properties_avg], axis=0, ignore_index=True)
 
 '''
 # finding latency to response, i.e. the time at which current exceeds 3x std of baseline
