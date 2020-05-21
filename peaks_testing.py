@@ -25,7 +25,7 @@ fs = 25                 # kHz, the sampling frequency
 width = 3               # ms, the width necessary for an event to be identified as synaptic
 
 '''#################### THIS LOOP RUNS THE SINGLE CELL ANALYSIS #################### '''
-cell_path = '/home/jhuang/Documents/phd_projects/Injected_GC_data/VC_pairs/data/p2/JH200313_c6_spontaneous_depol.ibw'
+cell_path = '/home/jhuang/Documents/phd_projects/Injected_GC_data/VC_pairs/data/p2/JH200311_c4_light100_depol.ibw'
 data = clamp_ephys.workflows.cell(cell_path, fs=fs, path_to_data_notes=data_path, timepoint='p2', amp_factor=amp_factor)
 
 data.get_raw_peaks(stim_time, post_stim, polarity='-', baseline_start=baseline_start, baseline_end=baseline_end)
@@ -54,7 +54,7 @@ window_start = (stim_time + 20) * fs
 # this below would be outside of the per-cell loop
 p2_kinetics_summary = pd.DataFrame()
 
-columns_index = ['peak_index', 'prominence', '10 to 90% RT (ms)', 'half-width (ms)']
+columns_index = ['peak_index', 'prominence', '10 to 90% RT (ms)', 'tau', 'half-width (ms)']
 first_peaks_properties_df = pd.DataFrame()
 
 for sweep in range(len(sweeps.columns)):
@@ -92,6 +92,7 @@ for sweep in range(len(sweeps.columns)):
         # fit exponential curve to decay phase of each peak to find tau
         # decay phase is defined by time of peak to the right index at full width (fw_right)
         peak_index = 0
+        tau_list = []
 
         for peak in peaks:
             
@@ -108,10 +109,12 @@ for sweep in range(len(sweeps.columns)):
             
             popt, pcov = scipy.optimize.curve_fit(f=decay_func, xdata=time_xdata, ydata=current_ydata, p0=starting_params)
             current_peak, tau = popt
+
+            tau_list.append(tau)
             
             peak_index += 1
 
-        peaks_array = np.array((peaks, prominences, ten_to_ninety, hw_time)).T
+        peaks_array = np.array((peaks, prominences, ten_to_ninety, tau_list, hw_time)).T
         peaks_data = pd.DataFrame(peaks_array, columns=columns_index)
 
         # extracting kinetics of the first three responses/peaks
