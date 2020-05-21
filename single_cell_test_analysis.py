@@ -27,7 +27,7 @@ fs = 25             # kHz, the sampling frequency
 
 '''#################### THIS LOOP RUNS THE SINGLE CELL ANALYSIS #################### '''
 cell_path = os.path.join(os.getcwd(), 'test_data', 'JH200303_c1_light100.ibw')
-data = clamp_ephys.workflows.cell(cell_path, fs=fs, path_to_data_notes=data_path, timepoint='p2', amp_factor=amp_factor)
+data = clamp_ephys.workflows.cell(cell_path, fs=fs, path_to_data_notes=data_path, timepoint='p2', amp_factor=amp_factor, drop_sweeps=True)
 
 data.get_raw_peaks(stim_time, post_stim)
 data.filter_traces(lowpass_freq)
@@ -87,7 +87,15 @@ p.circle(time_peaks, trace[peaks], size=5, line_color="navy", fill_color="orange
 p.line(ctime, cwt, color='red')
 show(p)
 
+drop_path = '/home/nate/urban/clamp_ephys/test_data/dropped_sweeps.csv'
 
+dropped_sweeps = pd.read_csv(drop_path, index_col=[0])
+
+if data.filename in dropped_sweeps.index:
+
+strsweeps = dropped_sweeps.loc[data.filename].values[0][1:-1].split(', ')
+drop_sweeps = [int(sweep) for sweep in strsweeps]
+drop_sweeps
 
 
 show(p)
