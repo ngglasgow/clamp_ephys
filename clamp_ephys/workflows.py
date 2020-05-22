@@ -138,11 +138,12 @@ class cell:
       
 
 
-    def get_series_resistance(self, tp_start, vm_jump, pre_tp, unit_scaler):
+    def get_series_resistance(self, tp_start, vm_jump, pre_tp):
         '''
         Finds the series resistance of raw traces with passthrough arguments to clamp.
         adds rs attribute to data object: pandas.Series of float in MOhms
         '''
+        unit_scaler = -12
         self.rs = clamp.series_resistance(self.traces, self.fs, tp_start, vm_jump, pre_tp, unit_scaler)
 
 
