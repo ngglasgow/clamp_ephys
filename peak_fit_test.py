@@ -21,7 +21,7 @@ fs = 25                 # kHz, the sampling frequency
 width = 3    
 
 # paths to clamp_ephys/test_data/
-project_path = os.path.join(os.path.expanduser('~'), 'urban', 'clamp_ephys')
+project_path = os.path.join(os.path.expanduser('~'), 'Documents', 'phd_projects', 'git_repos','clamp_ephys')
 notes_path = os.path.join(project_path, 'test_data', 'p2_data_notes.csv')
 cell_path = os.path.join(project_path, 'test_data', 'JH200303_c1_light100.ibw')
 
@@ -59,17 +59,17 @@ ten_to_ninety = (ninety_left - ten_left) / fs
 prominences = properties['prominences']
 hw_time = half_widths / fs
 
-peak = peaks[0]
+peak = peaks[1]
 
 # make sure to pull this out of the loops
-def decay_func(time, current_peak, tau):
-    return current_peak * np.exp(-time/tau)
+def decay_func(time, current_peak, tau, offset):
+    return current_peak * np.exp(-time/tau) + offset
 
-decay_end = fw_right[0].astype(int) # indexing needs to be a whole number
+decay_end = fw_right[1].astype(int) # indexing needs to be a whole number
 peak_trace = trace[peak:decay_end + 1] * -1
 xtime_adj = np.arange(0, len(peak_trace) / fs, 1 / fs)
 
-decay_end_ninety = ten_right[0].astype(int) # indexing needs to be a whole number
+decay_end_ninety = ten_right[1].astype(int) # indexing needs to be a whole number
 peak_trace_ninety = trace[peak:decay_end_ninety + 1] * -1
 xtime_adj_ninety = np.arange(0, len(peak_trace_ninety) / fs, 1 / fs)
 
@@ -77,15 +77,15 @@ xtime_adj_ninety = np.arange(0, len(peak_trace_ninety) / fs, 1 / fs)
 # take first index value that goes below 1*tau value, then multiply by 2 to account for noise
 # and divide by sampling time to get ms time scale
 # these should be the same regardless of where stopping
-guess_tau_time  = np.where(peak_trace < (peak_trace[0] * 0.37))[0][0] * 2 / fs
-starting_params = [peak_trace[0], guess_tau_time]
+guess_tau_time  = np.where(peak_trace < (peak_trace[1] * 0.37))[0][0] * 2 / fs
+starting_params = [peak_trace[1], guess_tau_time, 0]
 
 # fits
 popt, pcov = scipy.optimize.curve_fit(f=decay_func, xdata=xtime_adj, ydata=peak_trace)
-current_peak, tau = popt
+current_peak, tau, offset = popt
 
 popt_ninety, pcov_ninety = scipy.optimize.curve_fit(f=decay_func, xdata=xtime_adj_ninety, ydata=peak_trace_ninety)
-current_peak_ninety, tau_ninety = popt_ninety
+current_peak_ninety, tau_ninety, offset_ninety = popt_ninety
 
 plt.figure()
 plt.plot(xtime_adj, peak_trace, color='k', label='data')
