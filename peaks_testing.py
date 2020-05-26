@@ -3,7 +3,7 @@ import pandas as pd
 import os
 import scipy
 import matplotlib
-#%matplotlib
+%matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -25,7 +25,7 @@ fs = 25                 # kHz, the sampling frequency
 width = 3               # ms, the width necessary for an event to be identified as synaptic
 
 '''#################### THIS LOOP RUNS THE SINGLE CELL ANALYSIS #################### '''
-cell_path = '/home/jhuang/Documents/phd_projects/Injected_GC_data/VC_pairs/data/p2/JH200311_c4_light100_depol.ibw'
+cell_path = '/home/jhuang/Documents/phd_projects/Injected_GC_data/VC_pairs/data/p2/JH200303_c8_light100.ibw'
 data = clamp_ephys.workflows.cell(cell_path, fs=fs, path_to_data_notes=data_path, timepoint='p2', amp_factor=amp_factor)
 
 data.get_raw_peaks(stim_time, post_stim, polarity='-', baseline_start=baseline_start, baseline_end=baseline_end)
@@ -69,10 +69,10 @@ for sweep in range(len(sweeps.columns)):
         print('No peaks in sweep {}'.format(sweep))
     else:
         prominence_data = list(properties.values())[0:3]
-        # fig = plt.figure()
-        # fig.suptitle('Sweep {}'.format(sweep))
-        # plt.plot(trace)
-        # plt.plot(peaks, trace[peaks], 'x')
+        fig = plt.figure()
+        fig.suptitle('Sweep {}'.format(sweep))
+        plt.plot(trace)
+        plt.plot(peaks, trace[peaks], 'x')
 
         # calculate 10 to 90% and FWHM
         ten_widths, ten_height, ten_left, ten_right = scipy.signal.peak_widths(trace * -1, peaks, rel_height=0.9, prominence_data=prominence_data)
@@ -94,27 +94,27 @@ for sweep in range(len(sweeps.columns)):
         peak_index = 0
         tau_list = []
 
-        for peak in peaks:
+        # for peak in peaks:
             
-            def decay_func(time, current_peak, tau):
-	            return current_peak * np.exp(-time/tau)
+        #     def decay_func(time, current_peak, tau):
+	    #         return current_peak * np.exp(-time/tau)
 
-            decay_end = fw_right[peak_index].astype(int) # indexing needs to be a whole number
-            time_xdata = np.arange(peak, decay_end+1)
-            current_ydata = sweeps.iloc[peak:decay_end+1, sweep].values * -1
+        #     decay_end = fw_right[peak_index].astype(int) # indexing needs to be a whole number
+        #     time_xdata = np.arange(peak, decay_end+1)
+        #     current_ydata = sweeps.iloc[peak:decay_end+1, sweep].values * -1
             
-            current_peak0 = sweeps.iloc[peak, sweep] * -1
-            tau0 = 2*fs
-            starting_params = [current_peak0, tau0]
+        #     current_peak0 = sweeps.iloc[peak, sweep] * -1
+        #     tau0 = 2*fs
+        #     starting_params = [current_peak0, tau0]
             
-            popt, pcov = scipy.optimize.curve_fit(f=decay_func, xdata=time_xdata, ydata=current_ydata, p0=starting_params)
-            current_peak, tau = popt
+        #     popt, pcov = scipy.optimize.curve_fit(f=decay_func, xdata=time_xdata, ydata=current_ydata, p0=starting_params)
+        #     current_peak, tau = popt
 
-            tau_list.append(tau)
+        #     tau_list.append(tau)
             
-            peak_index += 1
+        #     peak_index += 1
 
-        peaks_array = np.array((peaks, prominences, ten_to_ninety, tau_list, hw_time)).T
+        peaks_array = np.array((peaks, prominences, ten_to_ninety, hw_time)).T
         peaks_data = pd.DataFrame(peaks_array, columns=columns_index)
 
         # extracting kinetics of the first three responses/peaks
