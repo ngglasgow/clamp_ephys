@@ -29,8 +29,11 @@ class cell:
             dropped_path = os.path.join(self.filepath[:-filename_length], 'dropped_sweeps.csv')
             dropped_sweeps = pd.read_csv(dropped_path, index_col=[0])
             strsweeps = dropped_sweeps.loc[self.filename].values[0][1:-1].split(', ')
-            sweeps_to_drop = [int(sweep) for sweep in strsweeps]
-            self.traces.drop(columns=sweeps_to_drop, inplace=True)
+            if '' in strsweeps:
+                pass
+            else:
+                sweeps_to_drop = [int(sweep) for sweep in strsweeps]
+                self.traces.drop(columns=sweeps_to_drop, inplace=True)
 
         self.mean_traces = self.traces.mean(axis=1)
         self.time = np.arange(0, len(self.traces), 1000 / self.fs)
