@@ -75,7 +75,7 @@ if len(peaks) > 0:
     trace_start = ten_left[8].astype(int)
     trace_end = ten_right[8].astype(int) # indexing needs to be a whole number
     whole_trace = trace[trace_start:trace_end+1] * -1
-    xtime_adj = np.arange(0, len(whole_trace) / fs, 1 / fs)
+    xtime_adj = np.arange(0, len(whole_trace)) / fs
 
 
     # take baseline as 10 ms before event onset
