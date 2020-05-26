@@ -17,7 +17,7 @@ from bokeh.io import output_notebook, show, push_notebook
 from bokeh.plotting import figure
 output_notebook()
 
-class physiplot:
+class Explorer:
     '''
     Wrapper class for the physiplot explorer.
     '''
