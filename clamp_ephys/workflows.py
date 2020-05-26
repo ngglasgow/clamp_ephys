@@ -10,7 +10,7 @@ import platform
 import scipy
 
 class cell:
-    def __init__(self, path_to_file, fs, path_to_data_notes, timepoint, amp_factor):
+    def __init__(self, path_to_file, fs, path_to_data_notes, timepoint, amp_factor, drop_sweeps=False):
         self.filepath = path_to_file
 
         machine = platform.uname()[0]
@@ -23,6 +23,18 @@ class cell:
         self.notes_path = path_to_data_notes
         self.file_id = self.filename.split('.')[0]
         self.traces = clamp.igor_to_pandas(self.filepath) * amp_factor
+
+        if drop_sweeps is True:
+            filename_length = len(self.filename) + 1
+            dropped_path = os.path.join(self.filepath[:-filename_length], 'dropped_sweeps.csv')
+            dropped_sweeps = pd.read_csv(dropped_path, index_col=[0])
+            strsweeps = dropped_sweeps.loc[self.filename].values[0][1:-1].split(', ')
+            if '' in strsweeps:
+                pass
+            else:
+                sweeps_to_drop = [int(sweep) for sweep in strsweeps]
+                self.traces.drop(columns=sweeps_to_drop, inplace=True)
+
         self.mean_traces = self.traces.mean(axis=1)
         self.time = np.arange(0, len(self.traces), 1000 / self.fs)
         self.metadata = metadata.get_metadata(self.filename, self.notes_path)
@@ -95,11 +107,39 @@ class cell:
         return hw_df
 
 
-    def get_series_resistance(self, tp_start, vm_jump, pre_tp, unit_scaler):
+    def get_filtered_peaks_kinetics(self, fs, stim_time, post_stim, polarity='-'):
+        '''
+        Finds the peak in each filtered trace and calculates latency to start, full width at half max,
+        total charge transferred, time to peak, duration        
+        '''
+
+        self.individual_peaks_filtered, self.individual_peaks_index = self.traces_filtered.apply(clamp.epsc_peak(self.traces_filtered, self.baseline_filtered, self.fs, stim_time, post_stim, polarity, index=True))
+        self.individual_subtracted_traces = self.traces_filtered - self.baseline_filtered
+
+        # define window to perform analyses on        
+        start = stim_time * fs
+        end = (stim_time + post_stim) * fs
+        self.traces_filtered_windowed = self.individual_subtracted_traces.iloc[start:end]
+        
+        # this is latency to start (time to get to 20% of peak IPSC)
+        self.current_start = self.traces_filtered_windowed.argmax(self.traces_windowed < (self.individual_peaks_filtered * 0.2))
+
+        # this is finding full width at half max
+        self.fwhm = scipy.signal.peak_widths(self.traces_filtered_windowed, self.individual_peaks_index, rel_height=0.5)
+        
+        # plt.plot(self.traces_filtered_windowed)
+        # plt.plot(self.individual_peaks_index, self.traces_filtered_windowed[self.individual_peaks_index], "x")
+        # plt.hlines(*self.fwhm[1:], color="C2")
+        # plt.show()
+      
+
+
+    def get_series_resistance(self, tp_start, vm_jump, pre_tp):
         '''
         Finds the series resistance of raw traces with passthrough arguments to clamp.
         adds rs attribute to data object: pandas.Series of float in MOhms
         '''
+        unit_scaler = -12
         self.rs = clamp.series_resistance(self.traces, self.fs, tp_start, vm_jump, pre_tp, unit_scaler)
 
 

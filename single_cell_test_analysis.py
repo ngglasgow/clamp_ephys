@@ -27,7 +27,7 @@ fs = 25             # kHz, the sampling frequency
 
 '''#################### THIS LOOP RUNS THE SINGLE CELL ANALYSIS #################### '''
 cell_path = os.path.join(os.getcwd(), 'test_data', 'JH200303_c1_light100.ibw')
-data = clamp_ephys.workflows.cell(cell_path, fs=fs, path_to_data_notes=data_path, timepoint='p2', amp_factor=amp_factor)
+data = clamp_ephys.workflows.cell(cell_path, fs=fs, path_to_data_notes=data_path, timepoint='p2', amp_factor=amp_factor, drop_sweeps=True)
 
 data.get_raw_peaks(stim_time, post_stim)
 data.filter_traces(lowpass_freq)
@@ -45,7 +45,7 @@ def plot_half_width(trace, data):
     '''
     x = data.traces_filtered[trace]
     peak = data.peaks_filtered_indices[trace]
-    hw_data = data.get_fwhm_peak_max.iloc[trace, 1:].values
+    hw_data = data.get_fwhm_peak_max().iloc[trace, 1:].values
 
     fig, axs = plt.subplots()
     axs.plot(x)
@@ -61,3 +61,43 @@ halfwidths_peak_max = data.get_fwhm_peak_max()['Max peak half-width (ms)']
 # pick an example trace to plot the actual half width of a given peak 
 %matplotlib widget
 fig = plot_half_width(1, data)
+
+import numpy as np # we will use this later, so import it now
+
+from bokeh.io import output_notebook, show
+from bokeh.plotting import figure
+output_notebook()
+
+
+trace = data.traces.iloc[:, 0].values
+sd = trace[3400 * data.fs:3900 * data.fs].std()
+time = np.arange(0, len(trace) / data.fs, 1 / data.fs)
+peaks, properties = scipy.signal.find_peaks(trace * -1, prominence=30)
+time_peaks = (peaks / data.fs)
+
+wavelet = scipy.signal.ricker(40, 4)
+ctime = np.arange(0, len(cwt)/ data.fs, 1 / data.fs)
+cwt = scipy.signal.convolve(trace, wavelet)
+
+p = figure(plot_width=800, plot_height=400)
+
+p.line(time, trace, line_width=2)
+p.circle(time_peaks, trace[peaks], size=5, line_color="navy", fill_color="orange", fill_alpha=0.5)
+
+p.line(ctime, cwt, color='red')
+show(p)
+
+drop_path = '/home/nate/urban/clamp_ephys/test_data/dropped_sweeps.csv'
+
+dropped_sweeps = pd.read_csv(drop_path, index_col=[0])
+
+if data.filename in dropped_sweeps.index:
+
+strsweeps = dropped_sweeps.loc[data.filename].values[0][1:-1].split(', ')
+drop_sweeps = [int(sweep) for sweep in strsweeps]
+drop_sweeps
+
+
+show(p)
+
+scipy.signal.convolve()
