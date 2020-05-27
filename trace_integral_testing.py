@@ -24,14 +24,83 @@ width = 3
 project_path = os.path.join(os.path.expanduser('~'), 'Documents', 'phd_projects', 'Injected_GC_data')
 notes_path = os.path.join(project_path, 'VC_pairs', 'tables', 'p2_data_notes.csv')
 cell_path = os.path.join(project_path, 'VC_pairs', 'data', 'p2', 'JH200313_c3_light100.ibw')
-sweep = 18
 
 data = clamp_ephys.workflows.cell(cell_path, fs=fs, path_to_data_notes=notes_path, timepoint='p2', amp_factor=amp_factor)
 
 data.get_raw_peaks(stim_time, post_stim, polarity='-', baseline_start=baseline_start, baseline_end=baseline_end)
 data.filter_traces(lowpass_freq)
 data.get_filtered_peaks(stim_time, post_stim)
+data.sweeps = data.traces - data.new_baseline_raw
 
+data.get_peaks_widths(data.sweeps, stim_time, fs, width)
+   
+
+
+''' begin peaks kinetics code '''
+
+
+
+
+if data.mean_peak_filtered > 0:
+    invert = 1
+
+else:
+    invert = -1
+
+window_start = (stim_time + 20) * fs
+all_peaks_kinetics_df = pd.DataFrame()
+
+for sweep in range(len(data.sweeps.columns)):        
+    trace = data.sweeps.iloc[window_start:, sweep].values
+    thresh = 2.5 * trace.std()
+
+    ninety_left = data.all_widths_df.loc[(sweep), 'ninety_left']
+    ten_left = data.all_widths_df.loc[(sweep), 'ten_left']
+    ten_to_ninety = (ninety_left - ten_left) / fs
+    peak_time = data.all_widths_df.loc[(sweep), 'peaks_index'] / fs
+    hw_time = data.all_widths_df.loc[(sweep), 'half_widths'] / fs
+    
+    peak_numbers = range(len(data.all_widths_df.loc[sweep]))
+
+    tau_list = []
+    charge_list = []
+
+    for peak_number in peak_numbers:        
+        tau = data.get_tau(trace, sweep, peak_number)
+        tau_list.append(tau)
+        charge = data.get_charge_transf(trace, sweep, peak_number)
+        charge_list.append(charge) 
+
+
+    
+    all_peaks_kinetics_data = pd.DataFrame({'sweep #': sweep, 'peak #': peak_numbers, 'peak time (ms)': peak_time, '10 to 90% RT (ms)': ten_to_ninety,
+        'tau': tau_list, 'half-width (ms)': hw_time, 'charge transferred (pA * s)': charge_list})
+
+    all_peaks_kinetics_df = pd.concat([all_peaks_kinetics_df, all_peaks_kinetics_data], ignore_index=True)
+all_peaks_kinetics_df = all_peaks_kinetics_df.set_index(['sweep #', 'peak #'], inplace=False)
+
+    delay_to_response = self.all_widths_df.loc[(sweep, 0), 'half_widths'] / self.fs
+
+
+peaks = data.all_widths_df.loc[(sweep), 'peaks_index']
+ten_height = data.all_widths_df.loc[(sweep), 'ten_height']
+ten_left = data.all_widths_df.loc[(sweep), 'ten_left']
+ten_right = data.all_widths_df.loc[(sweep), 'ten_right']
+
+ninety_height = data.all_widths_df.loc[(sweep), 'ninety_height']
+ninety_left = data.all_widths_df.loc[(sweep), 'ninety_left']
+ninety_right = data.all_widths_df.loc[(sweep), 'ninety_right']
+
+plt.plot(trace)
+plt.plot(peaks, trace[peaks], "x")
+
+plt.hlines(ten_height, ten_left, ten_right, color="C3")
+plt.hlines(ninety_height, ninety_left, ninety_right, color="black")
+
+plt.show()
+
+'''
+Begin old code
 sweeps = data.traces - data.new_baseline_raw
 window_start = (stim_time + 20) * fs
 
@@ -95,4 +164,6 @@ if len(peaks) > 0:
 
 else:
     print('No peaks in sweep {}'.format(sweep))
+
+'''
 

@@ -23,7 +23,7 @@ class cell:
         self.notes_path = path_to_data_notes
         self.file_id = self.filename.split('.')[0]
         self.traces = clamp.igor_to_pandas(self.filepath) * amp_factor
-
+        
         if drop_sweeps is True:
             filename_length = len(self.filename) + 1
             dropped_path = os.path.join(self.filepath[:-filename_length], 'dropped_sweeps.csv')
@@ -107,7 +107,166 @@ class cell:
         return hw_df
 
 
+    def get_peaks_widths(self, sweeps, stim_time, fs, width):
+        '''
+        Finds all the peaks in all the sweeps, then calculates the relevant widths
+        '''
+        #self.sweeps = self.traces - self.new_baseline_raw
+
+        if self.mean_peak_filtered > 0:
+            invert = 1
+        
+        else:
+            invert = -1
+
+        window_start = (stim_time + 20) * self.fs
+        all_widths_df = pd.DataFrame()
+        
+        for sweep in range(len(self.sweeps.columns)):        
+            trace = self.sweeps.iloc[window_start:, sweep].values
+            thresh = 2.5 * trace.std()
+
+            peaks, properties = scipy.signal.find_peaks(trace*invert, distance=0.5*fs, prominence=thresh, width=width*fs)
+
+            if len(peaks) > 0:
+                # calculate 10 to 90% and FWHM
+                prominence_data = list(properties.values())[0:3]
+                ten_widths, ten_height, ten_left, ten_right = scipy.signal.peak_widths(trace*invert, peaks, rel_height=0.9, prominence_data=prominence_data)
+                ninety_widths, ninety_height, ninety_left, ninety_right = scipy.signal.peak_widths(trace*invert, peaks, rel_height=0.1, prominence_data=prominence_data)
+                half_widths, hw_height, hw_left, hw_right = scipy.signal.peak_widths(trace*invert, peaks, rel_height=0.5, prominence_data=prominence_data)
+                full_widths, fw_height, fw_left, fw_right = scipy.signal.peak_widths(trace*invert, peaks, rel_height=1, prominence_data=prominence_data)
+
+                hw_height = hw_height * invert
+                fw_height = fw_height * invert
+                ten_height = ten_height * invert
+                ninety_height = ninety_height * invert
+                prominences = properties['prominences']
+
+                peak_numbers = range(len(peaks))
+
+                all_widths_data = pd.DataFrame({'sweep #': sweep, 'peak #': peak_numbers, 'peaks_index': peaks, 'prominence': prominences,
+                    'ten_widths': ten_widths, 'ten_height': ten_height, 'ten_left': ten_left, 'ten_right': ten_right, 
+                    'ninety_widths': ninety_widths, 'ninety_height': ninety_height, 'ninety_left': ninety_left, 
+                    'ninety_right': ninety_right, 'half_widths': half_widths, 'half_height': hw_height, 
+                    'half_left': hw_left, 'half_right': hw_right, 'full_widths': full_widths, 'full_height': fw_height, 
+                    'full_left': fw_left, 'full_right': fw_right})
+                
+                all_widths_df = pd.concat([all_widths_df, all_widths_data], ignore_index=True)
+            
+            else:
+                print('No peaks in sweep {}'.format(sweep))
+            
+
+        self.all_widths_df = all_widths_df.set_index(['sweep #', 'peak #'], inplace=False)
+
+        return self.all_widths_df
     
+
+    def get_tau(self, trace, sweep, peak_number):
+        #self.sweeps = self.traces - self.new_baseline_raw
+
+        # using peak to 90% decay as decay window
+        decay_end = self.all_widths_df.loc[(sweep, peak_number), 'ten_right'].astype(int) # indexing needs to be a whole number
+        peak_time = self.all_widths_df.loc[(sweep, peak_number), 'peaks_index'].astype(int)
+        peak_trace = trace[peak_time:decay_end + 1] * invert
+        xtime_adj = np.arange(0, len(peak_trace)) / self.fs
+
+        # if you actually need guesses, i'm taking a guess at tau
+        # take first index value that goes below 1*tau value, then multiply by 2 to account for noise
+        # and divide by sampling time to get ms time scale
+        # these should be the same regardless of where stopping
+        if len(np.where(peak_trace < (peak_trace[0] * 0.37))[0]) == 0:
+            guess_tau_time = 3
+        else:
+            guess_tau_time  = np.where(peak_trace < (peak_trace[0] * 0.37))[0][0] * 2 / self.fs
+        starting_params = [peak_trace[0], guess_tau_time, 0]
+
+        # fits
+        popt, pcov = scipy.optimize.curve_fit(f=clamp.decay_func, xdata=xtime_adj, ydata=peak_trace, 
+            p0=starting_params, bounds=((-np.inf, 0, -np.inf), (np.inf, np.inf, np.inf)))
+        current_peak, tau, offset = popt
+
+        # plt.figure()
+        # plt.plot(xtime_adj, peak_trace, color='k', label='data')
+        # plt.plot(xtime_adj, decay_func(xtime_adj, *popt), color='r', label=f'fit on 90%; tau (ms): {round(tau, 2)}')
+        # plt.legend()
+        return tau
+
+    
+    def get_charge_transf(self, trace, sweep, peak_number):
+        
+        # # sanity check plot
+        # plt.hlines(ten_height, ten_left, ten_right, color="C3")
+        # plt.show()
+        
+        # using 10% to 10% as trace for now
+        trace_start = self.all_widths_df.loc[(sweep, peak_number), 'ten_left'].astype(int)
+        trace_end = self.all_widths_df.loc[(sweep, peak_number), 'ten_right'].astype(int) # indexing needs to be a whole number
+        whole_trace = trace[trace_start:trace_end+1]
+        xtime_adj = np.arange(0, len(whole_trace)) / self.fs
+
+        # take baseline as 10 ms before event onset
+        baseline_window_start = trace_start - 10 * self.fs
+        event_baseline = np.mean(trace[baseline_window_start:trace_start])
+        whole_trace_sub = whole_trace - event_baseline
+
+        charge = scipy.integrate.trapz(whole_trace_sub, xtime_adj)
+        # convert charge value to pA * s from ms
+        charge = charge /1000
+
+        return charge
+
+    def get_peaks_kinetics(self, sweeps, stim_time, sweep, fs, thresh, width):
+        '''
+        Takes all the peaks in a given sweep, then calculate:
+            - time to peak (peak_index)
+            - prominence
+            - 10 to 90% RT (ms)
+            - tau
+            - half-width (ms)
+            - charge transferred (pA * s)
+        '''
+
+        if self.mean_peak_filtered > 0:
+            invert = 1
+        
+        else:
+            invert = -1
+
+        #sweeps = self.traces - self.new_baseline_raw  # should this be outside the function?
+        window_start = (stim_time + 20) * fs
+        trace = sweeps.iloc[window_start:, sweep].values
+        thresh = 2.5 * trace.std()
+
+        peaks, properties = scipy.signal.find_peaks(trace * -1, distance=0.5*fs, prominence=thresh, width=width*fs)
+        
+        if len(peaks) == 0:
+            print('No peaks in sweep {}'.format(sweep))
+        else:
+            prominence_data = list(properties.values())[0:3]
+            # fig = plt.figure()
+            # fig.suptitle('Sweep {}'.format(sweep))
+            # plt.plot(trace)
+            # plt.plot(peaks, trace[peaks], 'x')
+
+            ten_widths, ten_height, ten_left, ten_right = scipy.signal.peak_widths(trace * -1, peaks, rel_height=0.9, prominence_data=prominence_data)
+            ninety_widths, ninety_height, ninety_left, ninety_right = scipy.signal.peak_widths(trace * -1, peaks, rel_height=0.1, prominence_data=prominence_data)
+            half_widths, hw_height, hw_left, hw_right = scipy.signal.peak_widths(trace * -1, peaks, rel_height=0.5, prominence_data=prominence_data)
+            full_widths, fw_height, fw_left, fw_right = scipy.signal.peak_widths(trace * -1, peaks, rel_height=1, prominence_data=prominence_data)
+            results_full = scipy.signal.peak_widths(trace * -1, peaks, rel_height=1, prominence_data=prominence_data)
+
+            hw_height = hw_height * -1
+            fw_height = fw_height * -1
+            ten_height = ten_height * -1
+            ninety_height = ninety_height * -1
+
+            # plt.plot(trace)
+            # plt.plot(peaks, trace[peaks], "x")
+            
+            # plt.hlines(ten_height, ten_left, ten_right, color="C3")
+            # plt.show()
+
+            return peaks, properties, prominence_data
       
 
 

@@ -24,7 +24,7 @@ width = 3
 project_path = os.path.join(os.path.expanduser('~'), 'Documents', 'phd_projects', 'Injected_GC_data')
 notes_path = os.path.join(project_path, 'VC_pairs', 'tables', 'p2_data_notes.csv')
 cell_path = os.path.join(project_path, 'VC_pairs', 'data', 'p2', 'JH200313_c3_light100.ibw')
-sweep = 18
+sweep = 9
 
 data = clamp_ephys.workflows.cell(cell_path, fs=fs, path_to_data_notes=notes_path, timepoint='p2', amp_factor=amp_factor)
 
@@ -62,14 +62,14 @@ if len(peaks) > 0:
     prominences = properties['prominences']
     hw_time = half_widths / fs
 
-    peak = peaks[0]
+    peak = peaks[21]
 
     # make sure to pull this out of the loops
     def decay_func(time, current_peak, tau, offset):
         return current_peak * np.exp(-time/tau) + offset
 
     # using peak to 90% decay as decay window
-    decay_end = ten_right[0].astype(int) # indexing needs to be a whole number
+    decay_end = ten_right[21].astype(int) # indexing needs to be a whole number
     peak_trace = trace[peak:decay_end + 1] * -1
     xtime_adj = np.arange(0, len(peak_trace)) / fs
 
@@ -77,7 +77,10 @@ if len(peaks) > 0:
     # take first index value that goes below 1*tau value, then multiply by 2 to account for noise
     # and divide by sampling time to get ms time scale
     # these should be the same regardless of where stopping
-    guess_tau_time  = np.where(peak_trace < (peak_trace[0] * 0.37))[0][0] * 2 / fs
+    if len(np.where(peak_trace < (peak_trace[0] * 0.37))[0]) == 0:
+        guess_tau_time = 3
+    else:
+        guess_tau_time  = np.where(peak_trace < (peak_trace[0] * 0.37))[0][0] * 2 / fs
     starting_params = [peak_trace[0], guess_tau_time, 0]
 
     # fits
@@ -90,4 +93,5 @@ if len(peaks) > 0:
     plt.legend()
 else:
     print('No peaks in sweep {}'.format(sweep))
+
 
