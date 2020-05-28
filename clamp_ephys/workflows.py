@@ -163,6 +163,9 @@ class cell:
     
 
     def get_tau(self, trace, sweep, peak_number):
+        '''
+        Calculates the decay constant tau
+        '''
         if self.mean_peak_filtered > 0:
             invert = 1
         
@@ -198,12 +201,9 @@ class cell:
 
     
     def get_charge_transf(self, trace, sweep, peak_number):
-        if self.mean_peak_filtered > 0:
-            invert = 1
-        
-        else:
-            invert = -1
-
+        '''
+        Calculates the charge transferred (pA * s) using integral of the trace of each event
+        '''
         # # sanity check plot
         # plt.hlines(ten_height, ten_left, ten_right, color="C3")
         # plt.show()
@@ -228,20 +228,13 @@ class cell:
     def get_peaks_kinetics(self, stim_time, fs):
         '''
         Takes all the peaks in a given sweep, then calculate:
-            - time to peak (peak_index)
-            - prominence
+            - delay to response (ms) - time of first peak
             - 10 to 90% RT (ms)
             - tau
             - half-width (ms)
             - charge transferred (pA * s)
         '''
         self.sweeps = self.traces - self.new_baseline_raw
-
-        if self.mean_peak_filtered > 0:
-            invert = 1
-        
-        else:
-            invert = -1
 
         window_start = (stim_time + 20) * self.fs
         all_peaks_kinetics_df = pd.DataFrame()
