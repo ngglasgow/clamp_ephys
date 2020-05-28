@@ -111,7 +111,7 @@ class cell:
         '''
         Finds all the peaks in all the sweeps, then calculates the relevant widths
         '''
-        self.sweeps = self.traces - self.new_baseline_raw
+        self.sweeps = self.traces_filtered - self.new_baseline_raw
 
         if self.mean_peak_filtered > 0:
             invert = 1
@@ -154,7 +154,7 @@ class cell:
                 all_widths_df = pd.concat([all_widths_df, all_widths_data], ignore_index=True)
             
             else:
-                print('No peaks in sweep {}'.format(sweep))
+                print('No peaks in {} sweep {}'.format(self.file_id, sweep))
             
 
         self.all_widths_df = all_widths_df.set_index(['sweep #', 'peak #'], inplace=False)
@@ -234,16 +234,16 @@ class cell:
             - half-width (ms)
             - charge transferred (pA * s)
         '''
-        self.sweeps = self.traces - self.new_baseline_raw
+        self.sweeps = self.traces_filtered - self.new_baseline_raw
 
         window_start = (stim_time + 20) * self.fs
         all_peaks_kinetics_df = pd.DataFrame()
         all_peaks_kinetics_avg_df = pd.DataFrame()
         first3_kinetics_avg_df = pd.DataFrame()
         
-        for sweep in range(len(self.sweeps.columns)):        
+        for sweep in self.all_widths_df.index.levels[0]:     # this only pulls out sweeps that had peaks   
             trace = self.sweeps.iloc[window_start:, sweep].values
-            thresh = 2.5 * trace.std()
+
 
             ninety_left = self.all_widths_df.loc[(sweep), 'ninety_left']
             ten_left = self.all_widths_df.loc[(sweep), 'ten_left']
@@ -264,8 +264,12 @@ class cell:
             
             all_peaks_kinetics_data = pd.DataFrame({'sweep #': sweep, 'peak #': peak_numbers, 'peak time (ms)': peak_time, '10 to 90% RT (ms)': ten_to_ninety,
                 'tau': tau_list, 'half-width (ms)': hw_time, 'charge transferred (pA * s)': charge_list})
-            
-            delay_to_response = all_peaks_kinetics_data['peak time (ms)'][0] # gets the time of the first peak
+            all_peaks_kinetics_data = all_peaks_kinetics_data[all_peaks_kinetics_data.tau < 500] # drops peaks with tau values over 500
+
+            if len(all_peaks_kinetics_data) == 0: # moves onto the next sweep if no peaks exist after dropping tau values
+                continue
+
+            delay_to_response = all_peaks_kinetics_data.iloc[0, 2] # gets the time of the first peak
 
             # calculates the average kinetic values for all peaks in the given sweep 
             all_peaks_kinetics_avg_data = pd.DataFrame(all_peaks_kinetics_data.mean(axis=0)).T
@@ -274,7 +278,7 @@ class cell:
             all_peaks_kinetics_avg_data.insert(1, 'delay_to_response (ms)', delay_to_response)
 
             # calculates the average kinetics values for the first three peaks in a sweep   
-            first3_kinetics_avg_data = pd.DataFrame(all_peaks_kinetics_data.loc[:2].mean(axis=0)).T
+            first3_kinetics_avg_data = pd.DataFrame(all_peaks_kinetics_data.iloc[:3].mean(axis=0)).T
             first3_kinetics_avg_data['sweep #'] = first3_kinetics_avg_data['sweep #'].astype(int) # makes sweep # an int
             first3_kinetics_avg_data.drop(['peak #', 'peak time (ms)'], axis=1, inplace=True) #drop peak # and peak time columns
             first3_kinetics_avg_data.insert(1, 'delay_to_response (ms)', delay_to_response)
@@ -291,9 +295,14 @@ class cell:
 
         # this df contains avg kinetic values for the first three peaks in all the sweeps
         self.first3_kinetics_avg_df = first3_kinetics_avg_df.set_index(['sweep #'], inplace=False)
-                
 
-    def get_series_resistance(self, tp_start, vm_jump, pre_tp):
+        # this df calculates the average of averages for the first three peaks in all the sweeps
+        self.avg_first3_kinetics_avg_df = pd.DataFrame(self.first3_kinetics_avg_df.mean(axis=0)).T        
+        self.avg_first3_kinetics_avg_df.insert(0, 'file_id', self.file_id)
+        self.avg_first3_kinetics_avg_df.set_index(['file_id'], inplace=True)
+
+
+    def get_series_resistance(self, tp_start, vm_jump, pre_tp, unit_scaler):
         '''
         Finds the series resistance of raw traces with passthrough arguments to clamp.
         adds rs attribute to data object: pandas.Series of float in MOhms
@@ -556,6 +565,57 @@ class cell:
         path = os.path.join(base_path, filename)
         figure.savefig(path, dpi=300, format='png')
 
+    
+    def save_all_peaks_kinetics(self, path_to_tables):
+        '''
+        Saves the kinetics data from all the peaks in all the sweeps in a cell
+        Parameters:
+        -----------
+        path_to_tables: str
+            path to the directory for tables
+        '''  
+        
+        filename = '{}_{}_{}_{}_all_peaks_kinetics.csv'.format(self.file_id, self.timepoint, self.cell_type, self.condition)
+        base_path = os.path.join(path_to_tables, self.timepoint, self.cell_type, self.condition)
+        metadata.check_create_dirs(base_path)
+
+        path = os.path.join(base_path, filename)
+        self.all_peaks_kinetics_df.to_csv(path, float_format='%8.4f', index=True, index_label=['sweep #', 'peak #'], header=True)
+    
+
+    def save_all_peaks_kinetics_avg(self, path_to_tables):
+        '''
+        Saves the average kinetics data of all the peaks in all the sweeps in a cell
+        Parameters:
+        -----------
+        path_to_tables: str
+            path to the directory for tables
+        '''  
+        
+        filename = '{}_{}_{}_{}_all_peaks_kinetics_avg.csv'.format(self.file_id, self.timepoint, self.cell_type, self.condition)
+        base_path = os.path.join(path_to_tables, self.timepoint, self.cell_type, self.condition)
+        metadata.check_create_dirs(base_path)
+
+        path = os.path.join(base_path, filename)
+        self.all_peaks_kinetics_avg_df.to_csv(path, float_format='%8.4f', index=True, index_label=['sweep #'], header=True)
+
+
+    def save_first3_kinetics_avg(self, path_to_tables):
+        '''
+        Saves the average kinetics data of the first three peaks in all the sweeps in a cell
+        Parameters:
+        -----------
+        path_to_tables: str
+            path to the directory for tables
+        '''  
+        
+        filename = '{}_{}_{}_{}_first3_kinetics_avg.csv'.format(self.file_id, self.timepoint, self.cell_type, self.condition)
+        base_path = os.path.join(path_to_tables, self.timepoint, self.cell_type, self.condition)
+        metadata.check_create_dirs(base_path)
+
+        path = os.path.join(base_path, filename)
+        self.first3_kinetics_avg_df.to_csv(path, float_format='%8.4f', index=True, index_label=['sweep #', 'peak #'], header=True)
+
 
     def save_metadata(self, path_to_tables):
         '''
@@ -624,6 +684,7 @@ class cell:
 
         path = os.path.join(base_path, filename)
         self.mean_traces_filtered.to_csv(path, float_format='%8.4f', index=False, header=False)
+    
 
     def save_mean_subtracted_trace(self, path_to_tables):
         '''
