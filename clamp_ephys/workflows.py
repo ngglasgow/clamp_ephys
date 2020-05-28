@@ -107,11 +107,11 @@ class cell:
         return hw_df
 
 
-    def get_peaks_widths(self, sweeps, stim_time, fs, width):
+    def get_peaks_widths(self, stim_time, fs, width):
         '''
         Finds all the peaks in all the sweeps, then calculates the relevant widths
         '''
-        #self.sweeps = self.traces - self.new_baseline_raw
+        self.sweeps = self.traces - self.new_baseline_raw
 
         if self.mean_peak_filtered > 0:
             invert = 1
@@ -163,7 +163,11 @@ class cell:
     
 
     def get_tau(self, trace, sweep, peak_number):
-        #self.sweeps = self.traces - self.new_baseline_raw
+        if self.mean_peak_filtered > 0:
+            invert = 1
+        
+        else:
+            invert = -1
 
         # using peak to 90% decay as decay window
         decay_end = self.all_widths_df.loc[(sweep, peak_number), 'ten_right'].astype(int) # indexing needs to be a whole number
@@ -194,7 +198,12 @@ class cell:
 
     
     def get_charge_transf(self, trace, sweep, peak_number):
+        if self.mean_peak_filtered > 0:
+            invert = 1
         
+        else:
+            invert = -1
+
         # # sanity check plot
         # plt.hlines(ten_height, ten_left, ten_right, color="C3")
         # plt.show()
@@ -216,7 +225,7 @@ class cell:
 
         return charge
 
-    def get_peaks_kinetics(self, sweeps, stim_time, sweep, fs, thresh, width):
+    def get_peaks_kinetics(self, stim_time, fs):
         '''
         Takes all the peaks in a given sweep, then calculate:
             - time to peak (peak_index)
@@ -226,6 +235,7 @@ class cell:
             - half-width (ms)
             - charge transferred (pA * s)
         '''
+        self.sweeps = self.traces - self.new_baseline_raw
 
         if self.mean_peak_filtered > 0:
             invert = 1
@@ -233,42 +243,62 @@ class cell:
         else:
             invert = -1
 
-        #sweeps = self.traces - self.new_baseline_raw  # should this be outside the function?
-        window_start = (stim_time + 20) * fs
-        trace = sweeps.iloc[window_start:, sweep].values
-        thresh = 2.5 * trace.std()
-
-        peaks, properties = scipy.signal.find_peaks(trace * -1, distance=0.5*fs, prominence=thresh, width=width*fs)
+        window_start = (stim_time + 20) * self.fs
+        all_peaks_kinetics_df = pd.DataFrame()
+        all_peaks_kinetics_avg_df = pd.DataFrame()
+        first3_kinetics_avg_df = pd.DataFrame()
         
-        if len(peaks) == 0:
-            print('No peaks in sweep {}'.format(sweep))
-        else:
-            prominence_data = list(properties.values())[0:3]
-            # fig = plt.figure()
-            # fig.suptitle('Sweep {}'.format(sweep))
-            # plt.plot(trace)
-            # plt.plot(peaks, trace[peaks], 'x')
+        for sweep in range(len(self.sweeps.columns)):        
+            trace = self.sweeps.iloc[window_start:, sweep].values
+            thresh = 2.5 * trace.std()
 
-            ten_widths, ten_height, ten_left, ten_right = scipy.signal.peak_widths(trace * -1, peaks, rel_height=0.9, prominence_data=prominence_data)
-            ninety_widths, ninety_height, ninety_left, ninety_right = scipy.signal.peak_widths(trace * -1, peaks, rel_height=0.1, prominence_data=prominence_data)
-            half_widths, hw_height, hw_left, hw_right = scipy.signal.peak_widths(trace * -1, peaks, rel_height=0.5, prominence_data=prominence_data)
-            full_widths, fw_height, fw_left, fw_right = scipy.signal.peak_widths(trace * -1, peaks, rel_height=1, prominence_data=prominence_data)
-            results_full = scipy.signal.peak_widths(trace * -1, peaks, rel_height=1, prominence_data=prominence_data)
-
-            hw_height = hw_height * -1
-            fw_height = fw_height * -1
-            ten_height = ten_height * -1
-            ninety_height = ninety_height * -1
-
-            # plt.plot(trace)
-            # plt.plot(peaks, trace[peaks], "x")
+            ninety_left = self.all_widths_df.loc[(sweep), 'ninety_left']
+            ten_left = self.all_widths_df.loc[(sweep), 'ten_left']
+            ten_to_ninety = (ninety_left - ten_left) / self.fs
+            peak_time = self.all_widths_df.loc[(sweep), 'peaks_index'] / self.fs
+            hw_time = self.all_widths_df.loc[(sweep), 'half_widths'] / self.fs
             
-            # plt.hlines(ten_height, ten_left, ten_right, color="C3")
-            # plt.show()
+            peak_numbers = range(len(self.all_widths_df.loc[sweep]))
 
-            return peaks, properties, prominence_data
-      
+            tau_list = []
+            charge_list = []
 
+            for peak_number in peak_numbers:        
+                tau = self.get_tau(trace, sweep, peak_number)
+                tau_list.append(tau)
+                charge = self.get_charge_transf(trace, sweep, peak_number)
+                charge_list.append(charge) 
+            
+            all_peaks_kinetics_data = pd.DataFrame({'sweep #': sweep, 'peak #': peak_numbers, 'peak time (ms)': peak_time, '10 to 90% RT (ms)': ten_to_ninety,
+                'tau': tau_list, 'half-width (ms)': hw_time, 'charge transferred (pA * s)': charge_list})
+            
+            delay_to_response = all_peaks_kinetics_data['peak time (ms)'][0] # gets the time of the first peak
+
+            # calculates the average kinetic values for all peaks in the given sweep 
+            all_peaks_kinetics_avg_data = pd.DataFrame(all_peaks_kinetics_data.mean(axis=0)).T
+            all_peaks_kinetics_avg_data['sweep #'] = all_peaks_kinetics_avg_data['sweep #'].astype(int) # makes sweep # an int
+            all_peaks_kinetics_avg_data.drop(['peak #', 'peak time (ms)'], axis=1, inplace=True) #drop peak # and peak time columns
+            all_peaks_kinetics_avg_data.insert(1, 'delay_to_response (ms)', delay_to_response)
+
+            # calculates the average kinetics values for the first three peaks in a sweep   
+            first3_kinetics_avg_data = pd.DataFrame(all_peaks_kinetics_data.loc[:2].mean(axis=0)).T
+            first3_kinetics_avg_data['sweep #'] = first3_kinetics_avg_data['sweep #'].astype(int) # makes sweep # an int
+            first3_kinetics_avg_data.drop(['peak #', 'peak time (ms)'], axis=1, inplace=True) #drop peak # and peak time columns
+            first3_kinetics_avg_data.insert(1, 'delay_to_response (ms)', delay_to_response)
+
+            all_peaks_kinetics_df = pd.concat([all_peaks_kinetics_df, all_peaks_kinetics_data], ignore_index=True)
+            all_peaks_kinetics_avg_df = pd.concat([all_peaks_kinetics_avg_df, all_peaks_kinetics_avg_data], ignore_index=True)
+            first3_kinetics_avg_df = pd.concat([first3_kinetics_avg_df, first3_kinetics_avg_data], ignore_index=True)
+            
+        # this df contains all kinetics values for all the peaks in all the sweeps
+        self.all_peaks_kinetics_df = all_peaks_kinetics_df.set_index(['sweep #', 'peak #'], inplace=False)
+
+        # this df contains avg kinetic values for all the peaks in all the sweeps
+        self.all_peaks_kinetics_avg_df = all_peaks_kinetics_avg_df.set_index(['sweep #'], inplace=False)
+
+        # this df contains avg kinetic values for the first three peaks in all the sweeps
+        self.first3_kinetics_avg_df = first3_kinetics_avg_df.set_index(['sweep #'], inplace=False)
+                
 
     def get_series_resistance(self, tp_start, vm_jump, pre_tp):
         '''
