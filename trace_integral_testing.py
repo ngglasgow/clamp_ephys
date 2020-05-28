@@ -30,85 +30,8 @@ data = clamp_ephys.workflows.cell(cell_path, fs=fs, path_to_data_notes=notes_pat
 data.get_raw_peaks(stim_time, post_stim, polarity='-', baseline_start=baseline_start, baseline_end=baseline_end)
 data.filter_traces(lowpass_freq)
 data.get_filtered_peaks(stim_time, post_stim)
-data.sweeps = data.traces - data.new_baseline_raw
-
-data.get_peaks_widths(stim_time, fs, width)
-   
-data.get_peaks_kinetics(stim_time, fs)
-
-''' begin peaks kinetics code '''
 
 
-
-
-if data.mean_peak_filtered > 0:
-    invert = 1
-
-else:
-    invert = -1
-
-window_start = (stim_time + 20) * fs
-all_peaks_kinetics_df = pd.DataFrame()
-all_peaks_kinetics_avg_df = pd.DataFrame()
-first3_kinetics_avg_df = pd.DataFrame()
-
-for sweep in range(len(data.sweeps.columns)):        
-    trace = data.sweeps.iloc[window_start:, sweep].values
-    thresh = 2.5 * trace.std()
-
-    ninety_left = data.all_widths_df.loc[(sweep), 'ninety_left']
-    ten_left = data.all_widths_df.loc[(sweep), 'ten_left']
-    ten_to_ninety = (ninety_left - ten_left) / fs
-    peak_time = data.all_widths_df.loc[(sweep), 'peaks_index'] / fs
-    hw_time = data.all_widths_df.loc[(sweep), 'half_widths'] / fs
-    
-    peak_numbers = range(len(data.all_widths_df.loc[sweep]))
-
-    tau_list = []
-    charge_list = []
-
-    for peak_number in peak_numbers:        
-        tau = data.get_tau(trace, sweep, peak_number)
-        tau_list.append(tau)
-        charge = data.get_charge_transf(trace, sweep, peak_number)
-        charge_list.append(charge) 
-
-
-    
-    all_peaks_kinetics_data = pd.DataFrame({'sweep #': sweep, 'peak #': peak_numbers, 'peak time (ms)': peak_time, '10 to 90% RT (ms)': ten_to_ninety,
-        'tau': tau_list, 'half-width (ms)': hw_time, 'charge transferred (pA * s)': charge_list})
-    
-    delay_to_response = all_peaks_kinetics_data['peak time (ms)'][0] # gets the time of the first peak
-
-    # calculates the average kinetic values for all peaks in the given sweep 
-    all_peaks_kinetics_avg_data = pd.DataFrame(all_peaks_kinetics_data.mean(axis=0)).T
-    all_peaks_kinetics_avg_data['sweep #'] = all_peaks_kinetics_avg_data['sweep #'].astype(int) # makes sweep # an int
-    all_peaks_kinetics_avg_data.drop(['peak #', 'peak time (ms)'], axis=1, inplace=True) #drop peak # and peak time columns
-    all_peaks_kinetics_avg_data.insert(1, 'delay_to_response (ms)', delay_to_response)
-
-    # calculates the average kinetics values for the first three peaks in a sweep   
-    first3_kinetics_avg_data = pd.DataFrame(all_peaks_kinetics_data.loc[:2].mean(axis=0)).T
-    first3_kinetics_avg_data['sweep #'] = first3_kinetics_avg_data['sweep #'].astype(int) # makes sweep # an int
-    first3_kinetics_avg_data.drop(['peak #', 'peak time (ms)'], axis=1, inplace=True) #drop peak # and peak time columns
-    first3_kinetics_avg_data.insert(1, 'delay_to_response (ms)', delay_to_response)
-
-    all_peaks_kinetics_df = pd.concat([all_peaks_kinetics_df, all_peaks_kinetics_data], ignore_index=True)
-    all_peaks_kinetics_avg_df = pd.concat([all_peaks_kinetics_avg_df, all_peaks_kinetics_avg_data], ignore_index=True)
-    first3_kinetics_avg_df = pd.concat([first3_kinetics_avg_df, first3_kinetics_avg_data], ignore_index=True)
-     
-# this df contains all kinetics values for all the peaks in all the sweeps
-all_peaks_kinetics_df = all_peaks_kinetics_df.set_index(['sweep #', 'peak #'], inplace=False)
-
-# this df contains avg kinetic values for all the peaks in all the sweeps
-all_peaks_kinetics_avg_df = all_peaks_kinetics_avg_df.set_index(['sweep #'], inplace=False)
-
-# this df contains avg kinetic values for the first three peaks in all the sweeps
-first3_kinetics_avg_df = first3_kinetics_avg_df.set_index(['sweep #'], inplace=False)
-
-
-
-'''
-Begin old code
 sweeps = data.traces - data.new_baseline_raw
 window_start = (stim_time + 20) * fs
 
