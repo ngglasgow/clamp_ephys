@@ -297,10 +297,9 @@ class cell:
         self.first3_kinetics_avg_df = first3_kinetics_avg_df.set_index(['sweep #'], inplace=False)
 
         # this df calculates the average of averages for the first three peaks in all the sweeps
-        self.avg_first3_kinetics_avg_df = pd.DataFrame(self.first3_kinetics_avg_df.mean(axis=0)).T        
-        self.avg_first3_kinetics_avg_df.insert(0, 'file_id', self.file_id)
-        self.avg_first3_kinetics_avg_df.set_index(['file_id'], inplace=True)
-
+        self.avg_first3_kinetics_avg_df = pd.DataFrame(first3_kinetics_avg_df.mean(axis=0)).T        
+        self.avg_first3_kinetics_avg_df = pd.concat([self.metadata, self.avg_first3_kinetics_avg_df], axis=1)
+        self.avg_first3_kinetics_avg_df.drop(['sweep #'], axis=1, inplace=True)
 
     def get_series_resistance(self, tp_start, vm_jump, pre_tp, unit_scaler):
         '''

@@ -97,9 +97,8 @@ data.first3_kinetics_avg_df = first3_kinetics_avg_df.set_index(['sweep #'], inpl
 
 # this df calculates the average of averages for the first three peaks in all the sweeps
 data.avg_first3_kinetics_avg_df = pd.DataFrame(first3_kinetics_avg_df.mean(axis=0)).T        
-data.avg_first3_kinetics_avg_df.insert(0, 'file_id', data.file_id)
-data.avg_first3_kinetics_avg_df.set_index(['file_id'], inplace=True)
-
+data.avg_first3_kinetics_avg_df = pd.concat([data.metadata, data.avg_first3_kinetics_avg_df], axis=1)
+data.avg_first3_kinetics_avg_df.drop(['sweep #'], axis=1, inplace=True)
 
 
 

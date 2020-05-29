@@ -35,6 +35,7 @@ width = 3               # ms, the required width for classifying an event as a p
 p2_summary = pd.DataFrame()
 p2_kinetics_summary = pd.DataFrame()
 
+counter = 0
 for cell in project_path.p2_paths:
     data = clamp_ephys.workflows.cell(cell, fs=fs, path_to_data_notes=notes_path, timepoint='p2', amp_factor=amp_factor)
 
@@ -46,7 +47,7 @@ for cell in project_path.p2_paths:
     data.get_responses(threshold=5)
     data.get_sweepavg_summary()
 
-    # p2_summary = pd.concat([p2_summary, data.sweepavg_summary], ignore_index=True)
+    p2_summary = pd.concat([p2_summary, data.sweepavg_summary], ignore_index=True)
 
     # fig = data.plot_peaks_rs(amp_factor, save_fig=True, path_to_figures=figures)
 
@@ -65,13 +66,15 @@ for cell in project_path.p2_paths:
     data.save_first3_kinetics_avg(tables)
 
     p2_kinetics_summary = pd.concat([p2_kinetics_summary, data.avg_first3_kinetics_avg_df])
-    print('Finished analysis for ' + data.file_id)
+
+    counter+=1
+    print('Finished analysis for {}/{} cells'.format(counter, len(project_path.p2_paths)))
 
 summary_path = os.path.join(tables, 'p2_summary.csv')
 kinetics_summary_path = os.path.join(tables, 'p2_first3_kinetics_summary.csv')
 
 p2_summary.to_csv(summary_path, float_format='%8.4f', index=False)
-p2_kinetics_summary.to_csv(kinetics_summary_path, float_format='%8.4f', index=True, index_label='file_id')
+p2_kinetics_summary.to_csv(kinetics_summary_path, float_format='%8.4f', index=False)
 
 
 
