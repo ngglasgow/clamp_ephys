@@ -189,10 +189,19 @@ class cell:
         starting_params = [peak_trace[0], guess_tau_time, 0]
 
         # fits
-        popt, pcov = scipy.optimize.curve_fit(f=clamp.decay_func, xdata=xtime_adj, ydata=peak_trace, 
-            p0=starting_params, bounds=((-np.inf, 0, -np.inf), (np.inf, np.inf, np.inf)))
+        try:
+            popt, pcov = scipy.optimize.curve_fit(
+                f=clamp.decay_func,
+                xdata=xtime_adj,
+                ydata=peak_trace, 
+                p0=starting_params,
+                bounds=((-np.inf, 0, -np.inf), (np.inf, np.inf, np.inf))
+                )
+    
+        except RuntimeError:
+            popt = (np.nan, np.nan, np.nan)
+            
         current_peak, tau, offset = popt
-
         # plt.figure()
         # plt.plot(xtime_adj, peak_trace, color='k', label='data')
         # plt.plot(xtime_adj, decay_func(xtime_adj, *popt), color='r', label=f'fit on 90%; tau (ms): {round(tau, 2)}')
