@@ -107,10 +107,11 @@ class cell:
         return hw_df
 
 
-    def get_peaks_widths(self, stim_time, fs, width):
+    def get_peaks_widths(self, stim_time, width):
         '''
         Finds all the peaks in all the sweeps, then calculates the relevant widths
         '''
+        ## you're subtracting a raw baseline from the filtered traces? means should be roughly the same filtered or unfiltered, but seems an odd choice
         self.sweeps = self.traces_filtered - self.new_baseline_raw
 
         if self.mean_peak_filtered > 0:
@@ -126,7 +127,7 @@ class cell:
             trace = self.sweeps.iloc[window_start:, sweep].values
             thresh = 2.5 * trace.std()
 
-            peaks, properties = scipy.signal.find_peaks(trace*invert, distance=0.5*fs, prominence=thresh, width=width*fs)
+            peaks, properties = scipy.signal.find_peaks(trace*invert, distance=0.5*self.fs, prominence=thresh, width=width*self.fs)
 
             if len(peaks) > 0:
                 # calculate 10 to 90% and FWHM
@@ -159,7 +160,6 @@ class cell:
 
         self.all_widths_df = all_widths_df.set_index(['sweep #', 'peak #'], inplace=False)
 
-        return self.all_widths_df
     
 
     def get_tau(self, trace, sweep, peak_number):
@@ -211,7 +211,7 @@ class cell:
         # using 10% to 10% as trace for now
         trace_start = self.all_widths_df.loc[(sweep, peak_number), 'ten_left'].astype(int)
         trace_end = self.all_widths_df.loc[(sweep, peak_number), 'ten_right'].astype(int) # indexing needs to be a whole number
-        whole_trace = trace[trace_start:trace_end+1]
+        whole_trace = trace[trace_start:trace_end + 1]
         xtime_adj = np.arange(0, len(whole_trace)) / self.fs
 
         # take baseline as 10 ms before event onset
@@ -221,11 +221,11 @@ class cell:
 
         charge = scipy.integrate.trapz(whole_trace_sub, xtime_adj)
         # convert charge value to pA * s from ms
-        charge = charge /1000
+        charge = charge / 1000
 
         return charge
 
-    def get_peaks_kinetics(self, stim_time, fs):
+    def get_peaks_kinetics(self, stim_time):
         '''
         Takes all the peaks in a given sweep, then calculate:
             - delay to response (ms) - time of first peak
@@ -244,7 +244,6 @@ class cell:
         for sweep in self.all_widths_df.index.levels[0]:     # this only pulls out sweeps that had peaks   
             trace = self.sweeps.iloc[window_start:, sweep].values
 
-
             ninety_left = self.all_widths_df.loc[(sweep), 'ninety_left']
             ten_left = self.all_widths_df.loc[(sweep), 'ten_left']
             ten_to_ninety = (ninety_left - ten_left) / self.fs
@@ -262,8 +261,14 @@ class cell:
                 charge = self.get_charge_transf(trace, sweep, peak_number)
                 charge_list.append(charge) 
             
-            all_peaks_kinetics_data = pd.DataFrame({'sweep #': sweep, 'peak #': peak_numbers, 'peak time (ms)': peak_time, '10 to 90% RT (ms)': ten_to_ninety,
-                'tau': tau_list, 'half-width (ms)': hw_time, 'charge transferred (pA * s)': charge_list})
+            all_peaks_kinetics_data = pd.DataFrame({'sweep #': sweep,
+                                                    'peak #': peak_numbers,
+                                                    'peak time (ms)': peak_time,
+                                                    '10 to 90% RT (ms)': ten_to_ninety,
+                                                    'tau': tau_list,
+                                                    'half-width (ms)': hw_time,
+                                                    'charge transferred (pA * s)': charge_list})
+
             all_peaks_kinetics_data = all_peaks_kinetics_data[all_peaks_kinetics_data.tau < 500] # drops peaks with tau values over 500
 
             if len(all_peaks_kinetics_data) == 0: # moves onto the next sweep if no peaks exist after dropping tau values
