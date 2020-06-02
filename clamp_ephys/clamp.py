@@ -237,5 +237,21 @@ def series_resistance(data, fs, tp_start=5, vm_jump=10, pre_tp=3, unit_scaler=-1
 def decay_func(time, current_peak, tau, offset):
     '''
     Exponential decay function for calculating tau
+    Parameters
+    ----------
+    time: array
+        x array of time
+    current_peak: scalar/float
+        value of the starting peak for the exponential decay
+    tau: scalar/float
+        the time constant of decay of the exponential
+    offset: scalar/float
+        the asymptote that the exponential will decay to
+
+    Returns
+    -------
+    y: array
+        the y values for the exponential decay
     '''
-    return current_peak * np.exp(-time/tau) + offset
+    y = current_peak * np.exp(-time/tau) + offset
+    return y

@@ -28,8 +28,8 @@ fs = 10                 # kHz, the sampling frequency
 width = 3               # ms, the required width for classifying an event as a peak
 timepoint = 'p14'
 
-
-test_cell = test_data_files[0]
+test_cell = 'test_data/JH190828_c6_light100_1.ibw'
+#test_cell = test_data_files[0]
 data = clamp_ephys.workflows.cell(test_cell, fs=fs, path_to_data_notes=test_notes, timepoint=timepoint, amp_factor=amp_factor)
 
 data.get_raw_peaks(stim_time, post_stim, polarity='-', baseline_start=baseline_start, baseline_end=baseline_end)
