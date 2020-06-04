@@ -227,7 +227,7 @@ class cell:
         if trace_start < 10 * self.fs:
             event_baseline = np.mean(trace[:trace_start])
         else:
-            baseline_window_start = trace_start - 10 * fs
+            baseline_window_start = trace_start - 10 * self.fs
             event_baseline = np.mean(trace[baseline_window_start:trace_start])
             
         whole_trace_sub = whole_trace - event_baseline
