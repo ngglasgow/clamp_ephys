@@ -224,7 +224,7 @@ class cell:
         xtime_adj = np.arange(0, len(whole_trace)) / self.fs
 
         # take baseline as 10 ms before event onset
-        if trace_start < 10 * fs:
+        if trace_start < 10 * self.fs:
             event_baseline = np.mean(trace[:trace_start])
         else:
             baseline_window_start = trace_start - 10 * fs
