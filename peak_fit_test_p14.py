@@ -32,9 +32,11 @@ data.get_raw_peaks(stim_time, post_stim, polarity='-', baseline_start=baseline_s
 data.filter_traces(lowpass_freq)
 data.get_filtered_peaks(stim_time, post_stim)
 
-data.get_peaks_widths(stim_time, width)   
+# data.get_peaks_widths(stim_time, width)   
 
-sweeps = data.traces_filtered - data.new_baseline_raw
+# sweeps = data.traces_filtered - data.new_baseline_raw
+data.sweeps = pd.DataFrame(data.mean_traces_filtered - data.mean_baseline_filtered)
+
 window_start = (stim_time + 20) * fs
 all_peaks_kinetics_df = pd.DataFrame()
 all_peaks_kinetics_avg_df = pd.DataFrame()
@@ -149,6 +151,52 @@ charge = charge / 1000
 
 
 # %% this runs on all the sweeps
+if data.mean_peak_filtered > 0:
+    invert = 1
+else:
+    invert = -1
+
+window_start = (stim_time + 20) * data.fs
+all_widths_df = pd.DataFrame()
+
+for sweep in range(len(data.sweeps.columns)):        
+    trace = data.sweeps.iloc[window_start:, sweep].values
+    thresh = 2.5 * trace.std()
+
+    peaks, properties = scipy.signal.find_peaks(trace*invert, distance=0.5*data.fs, prominence=thresh, width=width*data.fs)
+
+    if len(peaks) > 0:
+        # calculate 10 to 90% and FWHM
+        prominence_data = list(properties.values())[0:3]
+        ten_widths, ten_height, ten_left, ten_right = scipy.signal.peak_widths(trace*invert, peaks, rel_height=0.9, prominence_data=prominence_data)
+        ninety_widths, ninety_height, ninety_left, ninety_right = scipy.signal.peak_widths(trace*invert, peaks, rel_height=0.1, prominence_data=prominence_data)
+        half_widths, hw_height, hw_left, hw_right = scipy.signal.peak_widths(trace*invert, peaks, rel_height=0.5, prominence_data=prominence_data)
+        full_widths, fw_height, fw_left, fw_right = scipy.signal.peak_widths(trace*invert, peaks, rel_height=1, prominence_data=prominence_data)
+
+        hw_height = hw_height * invert
+        fw_height = fw_height * invert
+        ten_height = ten_height * invert
+        ninety_height = ninety_height * invert
+        prominences = properties['prominences']
+
+        peak_numbers = range(len(peaks))
+
+        all_widths_data = pd.DataFrame({'sweep #': sweep, 'peak #': peak_numbers, 'peaks_index': peaks, 'prominence': prominences,
+            'ten_widths': ten_widths, 'ten_height': ten_height, 'ten_left': ten_left, 'ten_right': ten_right, 
+            'ninety_widths': ninety_widths, 'ninety_height': ninety_height, 'ninety_left': ninety_left, 
+            'ninety_right': ninety_right, 'half_widths': half_widths, 'half_height': hw_height, 
+            'half_left': hw_left, 'half_right': hw_right, 'full_widths': full_widths, 'full_height': fw_height, 
+            'full_left': fw_left, 'full_right': fw_right})
+        
+        all_widths_df = pd.concat([all_widths_df, all_widths_data], ignore_index=True)
+    
+    else:
+        print('No peaks in {} sweep {}'.format(data.file_id, sweep))
+    
+
+data.all_widths_df = all_widths_df.set_index(['sweep #', 'peak #'], inplace=False)
+
+
 for sweep in data.all_widths_df.index.levels[0]:     # this only pulls out sweeps that had peaks   
     trace = data.sweeps.iloc[window_start:, sweep].values
 
