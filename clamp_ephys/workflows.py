@@ -59,24 +59,24 @@ class cell:
         Finds the baseline and peaks of the raw traces based on passthrough arguments to clamp.
         adds peaks_raw attribute to data object: pandas.Series
         '''
-        self.baseline_raw = clamp.new_mean_baseline(self.traces, self.fs, stim_time, pre_stim)
+        self.baseline_raw = clamp.new_mean_baseline(self.traces, self.fs, baseline_start, baseline_end)
         self.peaks_raw = clamp.epsc_peak(self.traces, self.baseline_raw, self.fs, stim_time, post_stim, polarity)
-        self.mean_baseline_raw = clamp.new_mean_baseline(self.mean_traces, self.fs, stim_time, pre_stim)
+        self.mean_baseline_raw = clamp.new_mean_baseline(self.mean_traces, self.fs, baseline_start, baseline_end)
         self.mean_peak_raw, peak_index = clamp.epsc_peak(self.mean_traces, self.mean_baseline_raw, self.fs, stim_time, post_stim, polarity, index=True)
         self.mean_peak_raw_std = self.traces.std(axis=1)[peak_index]
         self.mean_peak_raw_sem = self.traces.sem(axis=1)[peak_index]
 
 
-    def get_filtered_peaks(self, stim_time, post_stim, polarity='-', pre_stim=100):
+    def get_filtered_peaks(self, stim_time, post_stim, polarity='-', pre_stim=100, baseline_start=3000, baseline_end=6000):
         '''
         Finds the baseline and peaks of the filtered traces thorugh passthrough arguments to clamp.
         adds peaks_filtered attribute to data object: pandas.Series
         '''
-        self.baseline_filtered = clamp.new_mean_baseline(self.traces_filtered, self.fs, stim_time, pre_stim)
-        self.baseline_filtered_std = clamp.new_std_baseline(self.traces_filtered, self.fs, stim_time)
+        self.baseline_filtered = clamp.new_mean_baseline(self.traces_filtered, self.fs, baseline_start, baseline_end)
+        self.baseline_filtered_std = clamp.new_std_baseline(self.traces_filtered, self.fs, baseline_start, baseline_end)
         self.peaks_filtered, self.peaks_filtered_indices = clamp.epsc_peak(self.traces_filtered, self.baseline_filtered, self.fs, stim_time, post_stim, polarity, index=True)
-        self.mean_baseline_filtered = clamp.new_mean_baseline(self.mean_traces_filtered, self.fs, stim_time, pre_stim)
-        self.mean_baseline_std_filtered = clamp.new_std_baseline(self.mean_traces_filtered, self.fs, stim_time) 
+        self.mean_baseline_filtered = clamp.new_mean_baseline(self.mean_traces_filtered, self.fs, baseline_start, baseline_end)
+        self.mean_baseline_std_filtered = clamp.new_std_baseline(self.mean_traces_filtered, self.fs, baseline_start, baseline_end) 
         self.mean_peak_filtered, self.mean_peak_index = clamp.epsc_peak(self.mean_traces_filtered, self.mean_baseline_filtered, self.fs, stim_time, post_stim, polarity, index=True)
         self.mean_peak_filtered_std = self.traces_filtered.std(axis=1)[self.mean_peak_index]
         self.mean_peak_filtered_sem = self.traces_filtered.sem(axis=1)[self.mean_peak_index]
@@ -237,7 +237,7 @@ class cell:
 
         return charge
 
-    def get_peaks_kinetics(self, stim_time):
+    def get_peaks_kinetics(self, stim_time, mean=False):
         '''
         Takes all the peaks in a given sweep, then calculate:
             - delay to response (ms) - time of first peak
@@ -245,8 +245,20 @@ class cell:
             - tau
             - half-width (ms)
             - charge transferred (pA * s)
+        Parameters
+        ----------
+        stim_time: int
+            time of stimulus onset, ms
+        mean: bool
+            whether the data being passed is the mean trace from the cell
+        Returns
+        -------
+        fig: matplotlib.pyplot fig
+            the figure object created
         '''
-        self.sweeps = self.traces_filtered - self.baseline_filtered
+        # if mean == True:
+        #     self.sweeps = 
+        # self.sweeps = self.traces_filtered - self.baseline_filtered
 
         window_start = (stim_time + 20) * self.fs
         all_peaks_kinetics_df = pd.DataFrame()
