@@ -30,6 +30,7 @@ timepoint = 'p14'
 # p14_summary will hold the single line summary for each cell
 p14_summary = pd.DataFrame()
 p14_kinetics_summary = pd.DataFrame()
+p14_meansweep_kinetics_summary = pd.DataFrame()
 
 ncells = len(project_path.p14_paths)
 
@@ -54,7 +55,7 @@ for file_number, cell in enumerate(project_path.p14_paths, 1):
     data.save_mean_subtracted_trace(tables)
     # data.save_mean_peak_time(tables)
 
-    # kinetics analysis
+    # kinetics analysis for all sweeps
     data.get_peaks_widths(stim_time, width)
     data.get_peaks_kinetics(stim_time)
 
@@ -64,10 +65,22 @@ for file_number, cell in enumerate(project_path.p14_paths, 1):
 
     p14_kinetics_summary = pd.concat([p14_kinetics_summary, data.avg_first3_kinetics_avg_df])
 
+    # kinetics analysis for mean sweep
+    data.get_peaks_widths(stim_time, width, mean=True)
+    data.get_peaks_kinetics(stim_time, mean=True)
+
+    data.save_all_peaks_kinetics(tables, mean=True)
+    data.save_all_peaks_kinetics_avg(tables, mean=True)
+    data.save_first3_kinetics_avg(tables, mean=True)
+
+    p14_meansweep_kinetics_summary = pd.concat([p14_meansweep_kinetics_summary, data.avg_first3_kinetics_avg_df])
+
     print(f'Finished analysis for {file_number} of {ncells} cells')
 
 summary_path = os.path.join(tables, 'p14_summary.csv')
-kinetics_summary_path = os.path.join(tables, 'p14_first3_kinetics_summary.csv')
+kinetics_summary_path = os.path.join(tables, timepoint, 'p14_first3_kinetics_summary.csv')
+meansweep_kinetics_summary_path = os.path.join(tables, timepoint, 'p14_meansweep_first3_kinetics_summary.csv')
 
 p14_summary.to_csv(summary_path, float_format='%8.4f', index=False)
 p14_kinetics_summary.to_csv(kinetics_summary_path, float_format='%8.4f', index=False)
+p14_meansweep_kinetics_summary.to_csv(meansweep_kinetics_summary_path, float_format='%8.4f', index=False)

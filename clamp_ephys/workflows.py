@@ -106,12 +106,15 @@ class cell:
         return hw_df
 
 
-    def get_peaks_widths(self, stim_time, width):
+    def get_peaks_widths(self, stim_time, width, mean=False):
         '''
         Finds all the peaks in all the sweeps, then calculates the relevant widths
         '''
         ## you're subtracting a raw baseline from the filtered traces? means should be roughly the same filtered or unfiltered, but seems an odd choice
-        self.sweeps = self.traces_filtered - self.baseline_filtered
+        if mean == True:
+            self.sweeps = pd.DataFrame(self.mean_traces_filtered - self.mean_baseline_filtered)
+        else:
+            self.sweeps = self.traces_filtered - self.baseline_filtered
 
         if self.mean_peak_filtered > 0:
             invert = 1
@@ -256,9 +259,10 @@ class cell:
         fig: matplotlib.pyplot fig
             the figure object created
         '''
-        # if mean == True:
-        #     self.sweeps = 
-        # self.sweeps = self.traces_filtered - self.baseline_filtered
+        if mean == True:
+            self.sweeps = pd.DataFrame(self.mean_traces_filtered - self.mean_baseline_filtered)
+        else:
+            self.sweeps = self.traces_filtered - self.baseline_filtered
 
         window_start = (stim_time + 20) * self.fs
         all_peaks_kinetics_df = pd.DataFrame()
@@ -594,7 +598,7 @@ class cell:
         figure.savefig(path, dpi=300, format='png')
 
     
-    def save_all_peaks_kinetics(self, path_to_tables):
+    def save_all_peaks_kinetics(self, path_to_tables, mean=False):
         '''
         Saves the kinetics data from all the peaks in all the sweeps in a cell
         Parameters:
@@ -602,16 +606,18 @@ class cell:
         path_to_tables: str
             path to the directory for tables
         '''  
-        
-        filename = '{}_{}_{}_{}_all_peaks_kinetics.csv'.format(self.file_id, self.timepoint, self.cell_type, self.condition)
-        base_path = os.path.join(path_to_tables, self.timepoint, self.cell_type, self.condition)
+        if mean == True:
+            filename = '{}_{}_{}_{}_meansweep_all_peaks_kinetics.csv'.format(self.file_id, self.timepoint, self.cell_type, self.condition)
+        else:
+            filename = '{}_{}_{}_{}_all_peaks_kinetics.csv'.format(self.file_id, self.timepoint, self.cell_type, self.condition)
+        base_path = os.path.join(path_to_tables, self.timepoint, self.cell_type, self.condition, self.file_id)
         metadata.check_create_dirs(base_path)
 
         path = os.path.join(base_path, filename)
         self.all_peaks_kinetics_df.to_csv(path, float_format='%8.4f', index=True, index_label=['sweep #', 'peak #'], header=True)
     
 
-    def save_all_peaks_kinetics_avg(self, path_to_tables):
+    def save_all_peaks_kinetics_avg(self, path_to_tables, mean=False):
         '''
         Saves the average kinetics data of all the peaks in all the sweeps in a cell
         Parameters:
@@ -619,16 +625,18 @@ class cell:
         path_to_tables: str
             path to the directory for tables
         '''  
-        
-        filename = '{}_{}_{}_{}_all_peaks_kinetics_avg.csv'.format(self.file_id, self.timepoint, self.cell_type, self.condition)
-        base_path = os.path.join(path_to_tables, self.timepoint, self.cell_type, self.condition)
+        if mean == True:
+            filename = '{}_{}_{}_{}_meansweep_all_peaks_kinetics_avg.csv'.format(self.file_id, self.timepoint, self.cell_type, self.condition)
+        else:
+            filename = '{}_{}_{}_{}_all_peaks_kinetics_avg.csv'.format(self.file_id, self.timepoint, self.cell_type, self.condition)
+        base_path = os.path.join(path_to_tables, self.timepoint, self.cell_type, self.condition, self.file_id)
         metadata.check_create_dirs(base_path)
 
         path = os.path.join(base_path, filename)
         self.all_peaks_kinetics_avg_df.to_csv(path, float_format='%8.4f', index=True, index_label=['sweep #'], header=True)
 
 
-    def save_first3_kinetics_avg(self, path_to_tables):
+    def save_first3_kinetics_avg(self, path_to_tables, mean=False):
         '''
         Saves the average kinetics data of the first three peaks in all the sweeps in a cell
         Parameters:
@@ -636,9 +644,11 @@ class cell:
         path_to_tables: str
             path to the directory for tables
         '''  
-        
-        filename = '{}_{}_{}_{}_first3_kinetics_avg.csv'.format(self.file_id, self.timepoint, self.cell_type, self.condition)
-        base_path = os.path.join(path_to_tables, self.timepoint, self.cell_type, self.condition)
+        if mean == True:
+            filename = '{}_{}_{}_{}_meansweep_first3_kinetics_avg.csv'.format(self.file_id, self.timepoint, self.cell_type, self.condition)
+        else:
+            filename = '{}_{}_{}_{}_first3_kinetics_avg.csv'.format(self.file_id, self.timepoint, self.cell_type, self.condition)
+        base_path = os.path.join(path_to_tables, self.timepoint, self.cell_type, self.condition, self.file_id)
         metadata.check_create_dirs(base_path)
 
         path = os.path.join(base_path, filename)
@@ -658,7 +668,7 @@ class cell:
         sweep_meta_data.fillna(method='ffill', inplace=True)
 
         filename = '{}_{}_{}_{}_all_sweeps_data.csv'.format(self.file_id, self.timepoint, self.cell_type, self.condition)
-        base_path = os.path.join(path_to_tables, self.timepoint, self.cell_type, self.condition)
+        base_path = os.path.join(path_to_tables, self.timepoint, self.cell_type, self.condition, self.file_id)
         metadata.check_create_dirs(base_path)
 
         path = os.path.join(base_path, filename)
@@ -692,7 +702,7 @@ class cell:
         '''
         # define path for saving file and save it
         filename = '{}_{}_{}_{}_sweepavg_summary.csv'.format(self.file_id, self.timepoint, self.cell_type, self.condition)
-        base_path = os.path.join(path_to_tables, self.timepoint, self.cell_type, self.condition)
+        base_path = os.path.join(path_to_tables, self.timepoint, self.cell_type, self.condition, self.file_id)
         metadata.check_create_dirs(base_path)
 
         path = os.path.join(base_path, filename)
@@ -707,7 +717,7 @@ class cell:
             path to the tables directory
         '''
         filename = '{}_{}_{}_{}_mean_timeseries.csv'.format(self.file_id, self.timepoint, self.cell_type, self.condition)
-        base_path = os.path.join(path_to_tables, self.timepoint, self.cell_type, self.condition)
+        base_path = os.path.join(path_to_tables, self.timepoint, self.cell_type, self.condition, self.file_id)
         metadata.check_create_dirs(base_path)
 
         path = os.path.join(base_path, filename)
@@ -725,7 +735,7 @@ class cell:
         subtracted_trace = self.mean_traces_filtered - self.mean_baseline_filtered
 
         filename = '{}_{}_{}_{}_mean_subtracted_timeseries.csv'.format(self.file_id, self.timepoint, self.cell_type, self.condition)
-        base_path = os.path.join(path_to_tables, self.timepoint, self.cell_type, self.condition)
+        base_path = os.path.join(path_to_tables, self.timepoint, self.cell_type, self.condition, self.file_id)
         metadata.check_create_dirs(base_path)
 
         path = os.path.join(base_path, filename)
@@ -740,7 +750,7 @@ class cell:
             path to the tables directory
         '''
         filename = '{}_{}_{}_{}_mean_peak_time.csv'.format(self.file_id, self.timepoint, self.cell_type, self.condition)
-        base_path = os.path.join(path_to_tables, self.timepoint, self.cell_type, self.condition)
+        base_path = os.path.join(path_to_tables, self.timepoint, self.cell_type, self.condition, self.file_id)
         metadata.check_create_dirs(base_path)
 
         path = os.path.join(base_path, filename)
