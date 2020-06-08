@@ -91,7 +91,7 @@ class cell:
         add filtered traces attrbute to data object
         lowpass_freq: frequency in Hz to pass to elephant filter
         '''
-        traces_filtered = elephant.signal_processing.butter(self.traces.T, self.lowpass_freq, fs=self.fs * 1000)
+        traces_filtered = elephant.signal_processing.butter(self.traces.T, lowpass_freq=self.lowpass_freq, fs=self.fs * 1000)
         self.traces_filtered = pd.DataFrame(traces_filtered).T
         self.mean_traces_filtered = self.traces_filtered.mean(axis=1)
 
