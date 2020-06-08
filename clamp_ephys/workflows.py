@@ -10,7 +10,25 @@ import platform
 import scipy
 
 class cell:
-    def __init__(self, path_to_file, fs, path_to_data_notes, timepoint, amp_factor, drop_sweeps=False):
+    def __init__(self, path_to_file, path_to_data_notes, timepoint, drop_sweeps=False):
+        '''
+        Creates a cell object with the following attributes depending on injection timepoint:
+        ----------
+        lowpass_freq    # Hz
+        stim_time       # ms
+        post_stim       # ms, amount of time after stimulus to look for max value
+        baseline_start  # ms, time in the sweep to start taking the baseline
+        baseline_end    # ms, time in the sweep at which baseline ends
+        tp_start        # ms, time of start of test pulse
+        tp_length       # ms, duration of test pulse
+        vm_jump         # mV, test pulse voltage jump
+        pre_tp          # ms, amount of time before test pulse start to get baseline
+        unit_scaler     # unitless, scaler to get back to A, from pA
+        amp_factor      # scaler for making plots in pA
+        fs              # kHz, the sampling frequency
+        width           # ms, the required width for classifying an event as a peak
+        timepoint       # str, time of injection
+        '''
         self.filepath = path_to_file
 
         machine = platform.uname()[0]
@@ -19,10 +37,34 @@ class cell:
         else:
             self.filename = self.filepath.split('/')[-1]
 
-        self.fs = fs
+        if timepoint == 'p2':
+            self.timepoint = timepoint
+            self.fs = 25
+            self.tp_start = 5
+            self.tp_length = 5
+            self.vm_jump = 10
+            self.pre_tp = 3
+            self.amp_factor = 1
+        elif timepoint == 'p14': # p14 timepoint
+            self.timepoint = timepoint
+            self.fs = 10
+            self.tp_start = 50
+            self.tp_length = 20
+            self.vm_jump = -5
+            self.pre_tp = 11
+            self.amp_factor = 1000
+
+        self.lowpass_freq = 500
+        self.stim_time = 500
+        self.post_stim = 250
+        self.baseline_start = 3000
+        self.baseline_end = 6000
+        self.unit_scaler = -12
+        self.width = 3
+       
         self.notes_path = path_to_data_notes
         self.file_id = self.filename.split('.')[0]
-        self.traces = clamp.igor_to_pandas(self.filepath) * amp_factor
+        self.traces = clamp.igor_to_pandas(self.filepath) * self.amp_factor
         
         if drop_sweeps is True:
             filename_length = len(self.filename) + 1
@@ -44,40 +86,40 @@ class cell:
         self.timepoint = timepoint
 
 
-    def filter_traces(self, lowpass_freq):
+    def filter_traces(self):
         '''
         add filtered traces attrbute to data object
         lowpass_freq: frequency in Hz to pass to elephant filter
         '''
-        traces_filtered = elephant.signal_processing.butter(self.traces.T, lowpass_freq=lowpass_freq, fs=self.fs * 1000)
+        traces_filtered = elephant.signal_processing.butter(self.traces.T, self.lowpass_freq, fs=self.fs * 1000)
         self.traces_filtered = pd.DataFrame(traces_filtered).T
         self.mean_traces_filtered = self.traces_filtered.mean(axis=1)
 
 
-    def get_raw_peaks(self, stim_time, post_stim, polarity='-', pre_stim=100, baseline_start=3000, baseline_end=6000):
+    def get_raw_peaks(self, polarity='-'):
         '''
         Finds the baseline and peaks of the raw traces based on passthrough arguments to clamp.
         adds peaks_raw attribute to data object: pandas.Series
         '''
-        self.baseline_raw = clamp.new_mean_baseline(self.traces, self.fs, baseline_start, baseline_end)
-        self.peaks_raw = clamp.epsc_peak(self.traces, self.baseline_raw, self.fs, stim_time, post_stim, polarity)
-        self.mean_baseline_raw = clamp.new_mean_baseline(self.mean_traces, self.fs, baseline_start, baseline_end)
-        self.mean_peak_raw, peak_index = clamp.epsc_peak(self.mean_traces, self.mean_baseline_raw, self.fs, stim_time, post_stim, polarity, index=True)
+        self.baseline_raw = clamp.new_mean_baseline(self.traces, self.fs, self.baseline_start, self.baseline_end)
+        self.peaks_raw = clamp.epsc_peak(self.traces, self.baseline_raw, self.fs, self.stim_time, self.post_stim, polarity)
+        self.mean_baseline_raw = clamp.new_mean_baseline(self.mean_traces, self.fs, self.baseline_start, self.baseline_end)
+        self.mean_peak_raw, peak_index = clamp.epsc_peak(self.mean_traces, self.mean_baseline_raw, self.fs, self.stim_time, self.post_stim, polarity, index=True)
         self.mean_peak_raw_std = self.traces.std(axis=1)[peak_index]
         self.mean_peak_raw_sem = self.traces.sem(axis=1)[peak_index]
 
 
-    def get_filtered_peaks(self, stim_time, post_stim, polarity='-', pre_stim=100, baseline_start=3000, baseline_end=6000):
+    def get_filtered_peaks(self, polarity='-'):
         '''
         Finds the baseline and peaks of the filtered traces thorugh passthrough arguments to clamp.
         adds peaks_filtered attribute to data object: pandas.Series
         '''
-        self.baseline_filtered = clamp.new_mean_baseline(self.traces_filtered, self.fs, baseline_start, baseline_end)
-        self.baseline_filtered_std = clamp.new_std_baseline(self.traces_filtered, self.fs, baseline_start, baseline_end)
-        self.peaks_filtered, self.peaks_filtered_indices = clamp.epsc_peak(self.traces_filtered, self.baseline_filtered, self.fs, stim_time, post_stim, polarity, index=True)
-        self.mean_baseline_filtered = clamp.new_mean_baseline(self.mean_traces_filtered, self.fs, baseline_start, baseline_end)
-        self.mean_baseline_std_filtered = clamp.new_std_baseline(self.mean_traces_filtered, self.fs, baseline_start, baseline_end) 
-        self.mean_peak_filtered, self.mean_peak_index = clamp.epsc_peak(self.mean_traces_filtered, self.mean_baseline_filtered, self.fs, stim_time, post_stim, polarity, index=True)
+        self.baseline_filtered = clamp.new_mean_baseline(self.traces_filtered, self.fs, self.baseline_start, self.baseline_end)
+        self.baseline_filtered_std = clamp.new_std_baseline(self.traces_filtered, self.fs, self.baseline_start, self.baseline_end)
+        self.peaks_filtered, self.peaks_filtered_indices = clamp.epsc_peak(self.traces_filtered, self.baseline_filtered, self.fs, self.stim_time, self.post_stim, polarity, index=True)
+        self.mean_baseline_filtered = clamp.new_mean_baseline(self.mean_traces_filtered, self.fs, self.baseline_start, self.baseline_end)
+        self.mean_baseline_std_filtered = clamp.new_std_baseline(self.mean_traces_filtered, self.fs, self.baseline_start, self.baseline_end) 
+        self.mean_peak_filtered, self.mean_peak_index = clamp.epsc_peak(self.mean_traces_filtered, self.mean_baseline_filtered, self.fs, self.stim_time, self.post_stim, polarity, index=True)
         self.mean_peak_filtered_std = self.traces_filtered.std(axis=1)[self.mean_peak_index]
         self.mean_peak_filtered_sem = self.traces_filtered.sem(axis=1)[self.mean_peak_index]
         self.mean_peak_filtered_time = self.mean_peak_index / self.fs
@@ -106,7 +148,7 @@ class cell:
         return hw_df
 
 
-    def get_peaks_widths(self, stim_time, width, mean=False):
+    def get_peaks_widths(self, mean=False):
         '''
         Finds all the peaks in all the sweeps, then calculates the relevant widths
         '''
@@ -122,14 +164,14 @@ class cell:
         else:
             invert = -1
 
-        window_start = (stim_time + 20) * self.fs
+        window_start = (self.stim_time + self.tp_length) * self.fs
         all_widths_df = pd.DataFrame()
         
         for sweep in range(len(self.sweeps.columns)):        
             trace = self.sweeps.iloc[window_start:, sweep].values
             thresh = 2.5 * trace.std()
 
-            peaks, properties = scipy.signal.find_peaks(trace*invert, distance=0.5*self.fs, prominence=thresh, width=width*self.fs)
+            peaks, properties = scipy.signal.find_peaks(trace*invert, distance=0.5*self.fs, prominence=thresh, width=self.width*self.fs)
 
             if len(peaks) > 0:
                 # calculate 10 to 90% and FWHM
@@ -240,7 +282,7 @@ class cell:
 
         return charge
 
-    def get_peaks_kinetics(self, stim_time, mean=False):
+    def get_peaks_kinetics(self, mean=False):
         '''
         Takes all the peaks in a given sweep, then calculate:
             - delay to response (ms) - time of first peak
@@ -264,7 +306,7 @@ class cell:
         else:
             self.sweeps = self.traces_filtered - self.baseline_filtered
 
-        window_start = (stim_time + 20) * self.fs
+        window_start = (self.stim_time + self.tp_length) * self.fs
         all_peaks_kinetics_df = pd.DataFrame()
         all_peaks_kinetics_avg_df = pd.DataFrame()
         first3_kinetics_avg_df = pd.DataFrame()
@@ -334,13 +376,12 @@ class cell:
         self.avg_first3_kinetics_avg_df = pd.concat([self.metadata, self.avg_first3_kinetics_avg_df], axis=1)
         self.avg_first3_kinetics_avg_df.drop(['sweep #'], axis=1, inplace=True)
 
-    def get_series_resistance(self, tp_start, vm_jump, pre_tp, unit_scaler):
+    def get_series_resistance(self):
         '''
         Finds the series resistance of raw traces with passthrough arguments to clamp.
         adds rs attribute to data object: pandas.Series of float in MOhms
         '''
-        unit_scaler = -12
-        self.rs = clamp.series_resistance(self.traces, self.fs, tp_start, vm_jump, pre_tp, unit_scaler)
+        self.rs = clamp.series_resistance(self.traces, self.fs, self.tp_start, self.vm_jump, self.pre_tp, self.unit_scaler)
 
 
     def get_sweep_data(self):
@@ -443,7 +484,7 @@ class cell:
             the figure object created
         '''
 
-        window_start = (stim_time + 20) * self.fs
+        window_start = (self.stim_time + 20) * self.fs
         baseline_window_start = baseline_start * self.fs
 
         # using filtered, non-subtracted data so I can see which sweeps to drop
@@ -475,15 +516,11 @@ class cell:
 
 
 
-    def plot_peaks_rs(self, amp_factor, save_fig=False, path_to_figures=None):
+    def plot_peaks_rs(self, save_fig=False, path_to_figures=None):
         '''
         Takes the data traces and plots the current summary of peaks plot
         Parameters
         ----------
-        amp_factor: int
-            is for scaling current values to = pA
-        timepoint: str
-            for labeling graph, what injection timepoint p2 or p14
         save_fig: bool 
             tells function to either save and close the plot (true) or display the plot (false)
         path_to_figures: str
@@ -762,12 +799,13 @@ class cell:
         
 
 class file_structure:
-    def __init__(self, location, project_path):
+    def __init__(self, location, project_path, timepoint):
         '''
         Creates an object with paths as attributes:
         location:   str value 'local' or 'server' only, refers to where you are
                     doing the actual work, 'local' by default.
         project_path:   str of the root project path from wherever your home dir is
+        timepoint: str of what injection timepoint the data are from
         '''
         machine = platform.uname()[0]
 
@@ -798,12 +836,15 @@ class file_structure:
                 print("OS not recognized. \nPlease see Nate for correction.")
 
         self.project = os.path.join(home_dir, project_path)
+
+        if timepoint == 'p2':
+            self.directory = os.path.join(self.project, 'data', 'p2')
+        else:
+            self.directory = os.path.join(self.project, 'data', 'p14')
+
         self.figures = os.path.join(self.project, 'figures')
         self.tables = os.path.join(self.project, 'tables')
-        self.p2 = os.path.join(self.project, 'data', 'p2')
-        self.p2_paths = [os.path.join(self.p2, file) for file in os.listdir(self.p2)]
-        self.p14 = os.path.join(self.project, 'data', 'p14')
-        self.p14_paths = [os.path.join(self.p14, file) for file in os.listdir(self.p14)]
+        self.paths = [os.path.join(self.directory, file) for file in os.listdir(self.directory)]
 
     def __repr__(self):
         return 'Project file structure and file lists for {}'.format(self.project)
