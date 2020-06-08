@@ -83,8 +83,8 @@ class Explorer:
         self.file_path = self.data_choose.selected
         self.path = self.data_choose.selected_path
         self.data_notes = self.data_notes_choose.selected
-        self.cell = workflows.cell(self.file_path, fs=fs, path_to_data_notes=self.data_notes, timepoint=timepoint, amp_factor=amp_factor)
-        self.cell.filter_traces(lowpass_freq)
+        self.cell = workflows.cell(self.file_path, path_to_data_notes=self.data_notes, timepoint=timepoint)
+        self.cell.filter_traces()
         self.trace = self.cell.traces_filtered[0]
         time = np.arange(0, len(self.trace) / self.cell.fs, 1 / self.cell.fs)
         ntraces = len(self.cell.traces_filtered.columns)
