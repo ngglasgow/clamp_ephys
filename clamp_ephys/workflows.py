@@ -14,19 +14,12 @@ class cell:
         '''
         Creates a cell object with the following attributes depending on injection timepoint:
         ----------
-        lowpass_freq    # Hz
-        stim_time       # ms
-        post_stim       # ms, amount of time after stimulus to look for max value
-        baseline_start  # ms, time in the sweep to start taking the baseline
-        baseline_end    # ms, time in the sweep at which baseline ends
         tp_start        # ms, time of start of test pulse
         tp_length       # ms, duration of test pulse
         vm_jump         # mV, test pulse voltage jump
         pre_tp          # ms, amount of time before test pulse start to get baseline
-        unit_scaler     # unitless, scaler to get back to A, from pA
         amp_factor      # scaler for making plots in pA
         fs              # kHz, the sampling frequency
-        width           # ms, the required width for classifying an event as a peak
         timepoint       # str, time of injection
         '''
         self.filepath = path_to_file
