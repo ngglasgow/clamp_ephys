@@ -314,6 +314,7 @@ class cell:
             ten_to_ninety = (ninety_left - ten_left) / self.fs
             peak_time = self.all_widths_df.loc[(sweep), 'peaks_index'] / self.fs
             hw_time = self.all_widths_df.loc[(sweep), 'half_widths'] / self.fs
+            prominences = self.all_widths_df.loc[(sweep), 'prominence']
             
             peak_numbers = range(len(self.all_widths_df.loc[sweep]))
 
@@ -329,6 +330,7 @@ class cell:
             all_peaks_kinetics_data = pd.DataFrame({'sweep #': sweep,
                                                     'peak #': peak_numbers,
                                                     'peak time (ms)': peak_time,
+                                                    'peak amplitude (pA)': prominences,
                                                     '10 to 90% RT (ms)': ten_to_ninety,
                                                     'tau': tau_list,
                                                     'half-width (ms)': hw_time,

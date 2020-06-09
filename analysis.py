@@ -2,7 +2,7 @@ import clamp_ephys
 import pandas as pd
 import os
 
-timepoint = 'p14'
+timepoint = 'p2'
 
 '''####################### SET THE PROPER PATH YOU WANT ########################### '''
 project_path = clamp_ephys.workflows.file_structure('local', 'Injected_GC_data/VC_pairs', timepoint)
@@ -67,9 +67,8 @@ for file_number, cell in enumerate(project_path.paths, 1):
         data.get_peaks_widths(stim_time, width, mean=True)
 
         if len(data.all_widths_df) == 0:    # skips kinetics analysis for mean traces without peaks
-            print('No peaks in {}'.format(data.file_id))
+            print('There are no peaks to analyze in the mean trace of {}'.format(data.file_id))
         else:
-            print('There are peaks to analyze in {}'.format(data.file_id))
             data.get_peaks_kinetics(stim_time, mean=True)
 
             data.save_all_peaks_kinetics(tables, mean=True)
@@ -82,9 +81,9 @@ for file_number, cell in enumerate(project_path.paths, 1):
 
     print(f'Finished analysis for {file_number} of {ncells} cells')
 
-summary_path = os.path.join(tables, '{timepoint}_summary.csv')
-kinetics_summary_path = os.path.join(tables, timepoint, '{timepoint}_first3_kinetics_summary.csv')
-meansweep_kinetics_summary_path = os.path.join(tables, timepoint, '{timepoint}_meansweep_first3_kinetics_summary.csv')
+summary_path = os.path.join(tables, f'{timepoint}_summary.csv')
+kinetics_summary_path = os.path.join(tables, timepoint, f'{timepoint}_first3_kinetics_summary.csv')
+meansweep_kinetics_summary_path = os.path.join(tables, timepoint, f'{timepoint}_meansweep_first3_kinetics_summary.csv')
 
 summary.to_csv(summary_path, float_format='%8.4f', index=False)
 kinetics_summary.to_csv(kinetics_summary_path, float_format='%8.4f', index=False)
