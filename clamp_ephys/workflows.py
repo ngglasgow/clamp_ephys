@@ -54,14 +54,7 @@ class cell:
             self.pre_tp = 11
             self.amp_factor = 1000
 
-        self.lowpass_freq = 500
-        self.stim_time = 500
-        self.post_stim = 250
-        self.baseline_start = 3000
-        self.baseline_end = 6000
-        self.unit_scaler = -12
-        self.width = 3
-       
+             
         self.notes_path = path_to_data_notes
         self.file_id = self.filename.split('.')[0]
         self.traces = clamp.igor_to_pandas(self.filepath) * self.amp_factor
@@ -86,40 +79,40 @@ class cell:
         self.timepoint = timepoint
 
 
-    def filter_traces(self):
+    def filter_traces(self, lowpass_freq):
         '''
         add filtered traces attrbute to data object
         lowpass_freq: frequency in Hz to pass to elephant filter
         '''
-        traces_filtered = elephant.signal_processing.butter(self.traces.T, lowpass_freq=self.lowpass_freq, fs=self.fs * 1000)
+        traces_filtered = elephant.signal_processing.butter(self.traces.T, lowpass_freq=lowpass_freq, fs=self.fs * 1000)
         self.traces_filtered = pd.DataFrame(traces_filtered).T
         self.mean_traces_filtered = self.traces_filtered.mean(axis=1)
 
 
-    def get_raw_peaks(self, polarity='-'):
+    def get_raw_peaks(self, stim_time, post_stim, polarity='-', pre_stim=100, baseline_start=3000, baseline_end=6000):
         '''
         Finds the baseline and peaks of the raw traces based on passthrough arguments to clamp.
         adds peaks_raw attribute to data object: pandas.Series
         '''
-        self.baseline_raw = clamp.new_mean_baseline(self.traces, self.fs, self.baseline_start, self.baseline_end)
-        self.peaks_raw = clamp.epsc_peak(self.traces, self.baseline_raw, self.fs, self.stim_time, self.post_stim, polarity)
-        self.mean_baseline_raw = clamp.new_mean_baseline(self.mean_traces, self.fs, self.baseline_start, self.baseline_end)
-        self.mean_peak_raw, peak_index = clamp.epsc_peak(self.mean_traces, self.mean_baseline_raw, self.fs, self.stim_time, self.post_stim, polarity, index=True)
+        self.baseline_raw = clamp.new_mean_baseline(self.traces, self.fs, baseline_start, baseline_end)
+        self.peaks_raw = clamp.epsc_peak(self.traces, self.baseline_raw, self.fs, stim_time, post_stim, polarity)
+        self.mean_baseline_raw = clamp.new_mean_baseline(self.mean_traces, self.fs, baseline_start, baseline_end)
+        self.mean_peak_raw, peak_index = clamp.epsc_peak(self.mean_traces, self.mean_baseline_raw, self.fs, stim_time, post_stim, polarity, index=True)
         self.mean_peak_raw_std = self.traces.std(axis=1)[peak_index]
         self.mean_peak_raw_sem = self.traces.sem(axis=1)[peak_index]
 
 
-    def get_filtered_peaks(self, polarity='-'):
+    def get_filtered_peaks(self, stim_time, post_stim, polarity='-', pre_stim=100, baseline_start=3000, baseline_end=6000):
         '''
         Finds the baseline and peaks of the filtered traces thorugh passthrough arguments to clamp.
         adds peaks_filtered attribute to data object: pandas.Series
         '''
-        self.baseline_filtered = clamp.new_mean_baseline(self.traces_filtered, self.fs, self.baseline_start, self.baseline_end)
-        self.baseline_filtered_std = clamp.new_std_baseline(self.traces_filtered, self.fs, self.baseline_start, self.baseline_end)
-        self.peaks_filtered, self.peaks_filtered_indices = clamp.epsc_peak(self.traces_filtered, self.baseline_filtered, self.fs, self.stim_time, self.post_stim, polarity, index=True)
-        self.mean_baseline_filtered = clamp.new_mean_baseline(self.mean_traces_filtered, self.fs, self.baseline_start, self.baseline_end)
-        self.mean_baseline_std_filtered = clamp.new_std_baseline(self.mean_traces_filtered, self.fs, self.baseline_start, self.baseline_end) 
-        self.mean_peak_filtered, self.mean_peak_index = clamp.epsc_peak(self.mean_traces_filtered, self.mean_baseline_filtered, self.fs, self.stim_time, self.post_stim, polarity, index=True)
+        self.baseline_filtered = clamp.new_mean_baseline(self.traces_filtered, self.fs, baseline_start, baseline_end)
+        self.baseline_filtered_std = clamp.new_std_baseline(self.traces_filtered, self.fs, baseline_start, baseline_end)
+        self.peaks_filtered, self.peaks_filtered_indices = clamp.epsc_peak(self.traces_filtered, self.baseline_filtered, self.fs, stim_time, post_stim, polarity, index=True)
+        self.mean_baseline_filtered = clamp.new_mean_baseline(self.mean_traces_filtered, self.fs, baseline_start, baseline_end)
+        self.mean_baseline_std_filtered = clamp.new_std_baseline(self.mean_traces_filtered, self.fs, baseline_start, baseline_end) 
+        self.mean_peak_filtered, self.mean_peak_index = clamp.epsc_peak(self.mean_traces_filtered, self.mean_baseline_filtered, self.fs, stim_time, post_stim, polarity, index=True)
         self.mean_peak_filtered_std = self.traces_filtered.std(axis=1)[self.mean_peak_index]
         self.mean_peak_filtered_sem = self.traces_filtered.sem(axis=1)[self.mean_peak_index]
         self.mean_peak_filtered_time = self.mean_peak_index / self.fs
@@ -148,7 +141,7 @@ class cell:
         return hw_df
 
 
-    def get_peaks_widths(self, mean=False):
+    def get_peaks_widths(self, stim_time, width, mean=False):
         '''
         Finds all the peaks in all the sweeps, then calculates the relevant widths
         '''
@@ -164,14 +157,15 @@ class cell:
         else:
             invert = -1
 
-        window_start = (self.stim_time + self.tp_length) * self.fs
+        window_start = (stim_time + self.tp_length) * self.fs
         all_widths_df = pd.DataFrame()
-        
+        self.all_widths_df = pd.DataFrame()
+
         for sweep in range(len(self.sweeps.columns)):        
             trace = self.sweeps.iloc[window_start:, sweep].values
             thresh = 2.5 * trace.std()
 
-            peaks, properties = scipy.signal.find_peaks(trace*invert, distance=0.5*self.fs, prominence=thresh, width=self.width*self.fs)
+            peaks, properties = scipy.signal.find_peaks(trace*invert, distance=0.5*self.fs, prominence=thresh, width=width*self.fs)
 
             if len(peaks) > 0:
                 # calculate 10 to 90% and FWHM
@@ -201,9 +195,10 @@ class cell:
             else:
                 print('No peaks in {} sweep {}'.format(self.file_id, sweep))
             
-
-        self.all_widths_df = all_widths_df.set_index(['sweep #', 'peak #'], inplace=False)
-
+        if len(all_widths_df) > 0:
+            self.all_widths_df = all_widths_df.set_index(['sweep #', 'peak #'], inplace=False)
+        else:
+            print('No peaks in {}'.format(self.file_id))
     
 
     def get_tau(self, trace, sweep, peak_number):
@@ -282,7 +277,7 @@ class cell:
 
         return charge
 
-    def get_peaks_kinetics(self, mean=False):
+    def get_peaks_kinetics(self, stim_time, mean=False):
         '''
         Takes all the peaks in a given sweep, then calculate:
             - delay to response (ms) - time of first peak
@@ -306,7 +301,7 @@ class cell:
         else:
             self.sweeps = self.traces_filtered - self.baseline_filtered
 
-        window_start = (self.stim_time + self.tp_length) * self.fs
+        window_start = (stim_time + self.tp_length) * self.fs
         all_peaks_kinetics_df = pd.DataFrame()
         all_peaks_kinetics_avg_df = pd.DataFrame()
         first3_kinetics_avg_df = pd.DataFrame()
@@ -339,7 +334,8 @@ class cell:
                                                     'half-width (ms)': hw_time,
                                                     'charge transferred (pA * s)': charge_list})
 
-            all_peaks_kinetics_data = all_peaks_kinetics_data[all_peaks_kinetics_data.tau < 500] # drops peaks with tau values over 500
+            if mean == False: # allows for large tau values on mean sweeps
+                all_peaks_kinetics_data = all_peaks_kinetics_data[all_peaks_kinetics_data.tau < 500] # drops peaks with tau values over 500
 
             if len(all_peaks_kinetics_data) == 0: # moves onto the next sweep if no peaks exist after dropping tau values
                 continue
@@ -376,12 +372,12 @@ class cell:
         self.avg_first3_kinetics_avg_df = pd.concat([self.metadata, self.avg_first3_kinetics_avg_df], axis=1)
         self.avg_first3_kinetics_avg_df.drop(['sweep #'], axis=1, inplace=True)
 
-    def get_series_resistance(self):
+    def get_series_resistance(self, unit_scaler):
         '''
         Finds the series resistance of raw traces with passthrough arguments to clamp.
         adds rs attribute to data object: pandas.Series of float in MOhms
         '''
-        self.rs = clamp.series_resistance(self.traces, self.fs, self.tp_start, self.vm_jump, self.pre_tp, self.unit_scaler)
+        self.rs = clamp.series_resistance(self.traces, self.fs, self.tp_start, self.vm_jump, self.pre_tp, unit_scaler)
 
 
     def get_sweep_data(self):
@@ -484,7 +480,7 @@ class cell:
             the figure object created
         '''
 
-        window_start = (self.stim_time + 20) * self.fs
+        window_start = (stim_time + self.tp_length) * self.fs
         baseline_window_start = baseline_start * self.fs
 
         # using filtered, non-subtracted data so I can see which sweeps to drop
@@ -722,7 +718,7 @@ class cell:
         '''
         # define path for saving file and save it
         filename = '{}_{}_{}_{}_summary_data.csv'.format(self.file_id, self.timepoint, self.cell_type, self.condition)
-        base_path = os.path.join(path_to_tables, self.timepoint, self.cell_type, self.condition)
+        base_path = os.path.join(path_to_tables, self.timepoint, self.cell_type, self.condition, self.file_id)
         metadata.check_create_dirs(base_path)
 
         path = os.path.join(base_path, filename)

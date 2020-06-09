@@ -14,6 +14,15 @@ if timepoint == 'p2':
 else:
     notes_path = os.path.join(tables, 'p14_data_notes.csv')
 
+''' ################### SET/CHECK THESE PARAMETERS BEFORE RUNNING ################## '''
+lowpass_freq = 500      # Hz
+stim_time = 500         # ms
+post_stim = 250         # ms, amount of time after stimulus to look for max value
+baseline_start = 3000   # ms, time in the sweep to start taking the baseline
+baseline_end = 6000     # ms, time in the sweep at which baseline ends
+unit_scaler = -12       # unitless, scaler to get back to A, from pA
+width = 3               # ms, the required width for classifying an event as a peak
+
 
 # p14_summary will hold the single line summary for each cell
 summary = pd.DataFrame()
@@ -25,10 +34,10 @@ ncells = len(project_path.paths)
 for file_number, cell in enumerate(project_path.paths, 1):
     data = clamp_ephys.workflows.cell(cell, path_to_data_notes=notes_path, timepoint=timepoint)
 
-    data.get_raw_peaks()
-    data.filter_traces()
-    data.get_filtered_peaks()
-    data.get_series_resistance()
+    data.get_raw_peaks(stim_time, post_stim)
+    data.filter_traces(lowpass_freq)
+    data.get_filtered_peaks(stim_time, post_stim)
+    data.get_series_resistance(unit_scaler)
     data.get_sweep_data()
     data.get_responses(threshold=5)
     data.get_sweepavg_summary()
@@ -44,8 +53,8 @@ for file_number, cell in enumerate(project_path.paths, 1):
     # data.save_mean_peak_time(tables)
 
     # kinetics analysis for all sweeps
-    data.get_peaks_widths()
-    data.get_peaks_kinetics()
+    data.get_peaks_widths(stim_time, width)
+    data.get_peaks_kinetics(stim_time)
 
     data.save_all_peaks_kinetics(tables)
     data.save_all_peaks_kinetics_avg(tables)
@@ -53,15 +62,23 @@ for file_number, cell in enumerate(project_path.paths, 1):
 
     kinetics_summary = pd.concat([kinetics_summary, data.avg_first3_kinetics_avg_df])
 
-    # kinetics analysis for mean sweep
-    data.get_peaks_widths(mean=True)
-    data.get_peaks_kinetics(mean=True)
+    # kinetics analysis for mean sweep for light conditions only
+    if 'light' in cell:
+        data.get_peaks_widths(stim_time, width, mean=True)
 
-    data.save_all_peaks_kinetics(tables, mean=True)
-    data.save_all_peaks_kinetics_avg(tables, mean=True)
-    data.save_first3_kinetics_avg(tables, mean=True)
+        if len(data.all_widths_df) == 0:    # skips kinetics analysis for mean traces without peaks
+            print('No peaks in {}'.format(data.file_id))
+        else:
+            print('There are peaks to analyze in {}'.format(data.file_id))
+            data.get_peaks_kinetics(stim_time, mean=True)
 
-    meansweep_kinetics_summary = pd.concat([meansweep_kinetics_summary, data.avg_first3_kinetics_avg_df])
+            data.save_all_peaks_kinetics(tables, mean=True)
+            data.save_all_peaks_kinetics_avg(tables, mean=True)
+            data.save_first3_kinetics_avg(tables, mean=True)
+
+            meansweep_kinetics_summary = pd.concat([meansweep_kinetics_summary, data.avg_first3_kinetics_avg_df])
+    else:
+        pass    
 
     print(f'Finished analysis for {file_number} of {ncells} cells')
 

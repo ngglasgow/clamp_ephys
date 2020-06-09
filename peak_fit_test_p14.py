@@ -24,20 +24,20 @@ timepoint = 'p14'
 # paths to clamp_ephys/test_data/
 project_path = os.path.join(os.path.expanduser('~'), 'Documents', 'phd_projects', 'Injected_GC_data')
 notes_path = os.path.join(project_path, 'VC_pairs', 'tables', 'p14_data_notes.csv')
-cell_path = os.path.join(project_path, 'VC_pairs', 'data', 'p14', 'JH190828_c4_light100_1.ibw')
+cell_path = os.path.join(project_path, 'VC_pairs', 'data', 'p14', 'JH191009_c4_light100_1.ibw')
 
-data = clamp_ephys.workflows.cell(cell_path, fs=fs, path_to_data_notes=notes_path, timepoint=timepoint, amp_factor=amp_factor)
+data = clamp_ephys.workflows.cell(cell_path, path_to_data_notes=notes_path, timepoint=timepoint)
 
-data.get_raw_peaks(stim_time, post_stim, polarity='-', baseline_start=baseline_start, baseline_end=baseline_end)
+data.get_raw_peaks(stim_time, post_stim)
 data.filter_traces(lowpass_freq)
 data.get_filtered_peaks(stim_time, post_stim)
 
 # data.get_peaks_widths(stim_time, width)   
 
-# sweeps = data.traces_filtered - data.new_baseline_raw
+# data.sweeps = data.traces_filtered - data.baseline_filtered
 data.sweeps = pd.DataFrame(data.mean_traces_filtered - data.mean_baseline_filtered)
 
-window_start = (stim_time + 20) * fs
+window_start = (stim_time + 5) * fs
 all_peaks_kinetics_df = pd.DataFrame()
 all_peaks_kinetics_avg_df = pd.DataFrame()
 first3_kinetics_avg_df = pd.DataFrame()
@@ -45,9 +45,9 @@ first3_kinetics_avg_df = pd.DataFrame()
 
 
 #%% this runs on an individual sweep
-sweep = 17
+sweep = 0
 peak_number = 0     
-trace = sweeps.iloc[window_start:, sweep].values
+trace = data.sweeps.iloc[window_start:, sweep].values
 thresh = 2.5 * trace.std()
 
 peaks, properties = scipy.signal.find_peaks(trace * -1, distance=0.5*fs, prominence=thresh, width=width*fs)
@@ -156,7 +156,7 @@ if data.mean_peak_filtered > 0:
 else:
     invert = -1
 
-window_start = (stim_time + 20) * data.fs
+window_start = (stim_time + 5) * data.fs
 all_widths_df = pd.DataFrame()
 
 for sweep in range(len(data.sweeps.columns)):        
@@ -193,10 +193,18 @@ for sweep in range(len(data.sweeps.columns)):
     else:
         print('No peaks in {} sweep {}'.format(data.file_id, sweep))
     
+if len(all_widths_df) > 0:
+    data.all_widths_df = all_widths_df.set_index(['sweep #', 'peak #'], inplace=False)
+else:
+    print('No peaks in {}'.format(data.file_id))
 
-data.all_widths_df = all_widths_df.set_index(['sweep #', 'peak #'], inplace=False)
-
-
+try:
+    data.all_widths_df
+except:
+    print('No peaks in {}'.format(data.file_id))
+else:
+    print('There are peaks in {}'.format(data.file_id))
+    
 for sweep in data.all_widths_df.index.levels[0]:     # this only pulls out sweeps that had peaks   
     trace = data.sweeps.iloc[window_start:, sweep].values
 
