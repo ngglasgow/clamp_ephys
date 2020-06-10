@@ -334,6 +334,8 @@ class cell:
 
             if len(all_peaks_kinetics_data) == 0: # moves onto the next sweep if no peaks exist after dropping tau values
                 continue
+            # optional: plot traces of first 3 events
+            # self.plot_first3_events(all_peaks_kinetics_data, sweep, trace)
 
             delay_to_response = all_peaks_kinetics_data.iloc[0, 2] # gets the time of the first peak
 
@@ -505,6 +507,60 @@ class cell:
         fig.savefig(path, dpi=300, format='png')
         plt.close(fig)
 
+
+    def plot_first3_events(self, kinetics_data, sweep, trace, save_fig=False, path_to_figures=None):
+        '''
+        Takes the data traces and plots the current summary of peaks plot
+        Parameters
+        ----------
+        kinetics_data: pd.DataFrame
+            Contains kinetics data from all events in the sweep after dropping large tau values
+        sweep: int
+            The sweep whose events are being plotted
+        save_fig: bool 
+            tells function to either save and close the plot (true) or display the plot (false)
+        path_to_figures: str
+            path to figures IF save_fig=True
+        Returns
+        -------
+        fig: matplotlib.pyplot fig
+            the figure object created
+        '''
+        first3_time = kinetics_data['peak time (ms)'].iloc[:3] * self.fs
+        first3_time = first3_time.astype(int) 
+        first3_traces = pd.DataFrame()
+
+        first3_peaknumbs = kinetics_data.index[:3]
+
+        for first3_peak in first3_peaknumbs:
+            event_start = self.all_widths_df.loc[(sweep), 'full_left'][first3_peak].astype(int) 
+            event_end = self.all_widths_df.loc[(sweep), 'full_right'][first3_peak].astype(int)
+            event_trace = pd.DataFrame(trace[event_start:event_end + 1])
+            
+            # take baseline as 10 ms before event onset
+            if event_start < 10 * self.fs:
+                event_baseline = np.mean(trace[:event_start])
+            else:
+                baseline_window_start = event_start - 10 * self.fs
+                event_baseline = np.mean(trace[baseline_window_start:event_start])
+                
+            event_trace_sub = event_trace - event_baseline
+            offset = 0 - event_trace_sub.loc[0]     # offset for plotting
+            event_trace_sub += offset
+
+            first3_traces = pd.concat([first3_traces, event_trace_sub], axis=1, ignore_index=True)
+
+        # make the x-axis as long as the longest event
+        xtime_adj = np.arange(0, len(first3_traces)) / self.fs
+
+        plt.figure()
+        for event_trace in range(len(first3_traces.columns)):
+            plt.plot(xtime_adj, first3_traces[event_trace], label='Event #{}'.format(event_trace+1))
+        plt.xlim(left=0, right=100)
+        plt.xlabel('Time (ms)')
+        plt.ylabel('Current (pA)')
+        plt.legend(loc='best')
+        plt.show()
 
 
     def plot_peaks_rs(self, save_fig=False, path_to_figures=None):

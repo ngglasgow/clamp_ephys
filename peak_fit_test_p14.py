@@ -24,7 +24,7 @@ timepoint = 'p14'
 # paths to clamp_ephys/test_data/
 project_path = os.path.join(os.path.expanduser('~'), 'Documents', 'phd_projects', 'Injected_GC_data')
 notes_path = os.path.join(project_path, 'VC_pairs', 'tables', 'p14_data_notes.csv')
-cell_path = os.path.join(project_path, 'VC_pairs', 'data', 'p14', 'JH191008_c2_light100_1.ibw')
+cell_path = os.path.join(project_path, 'VC_pairs', 'data', 'p14', 'JH190904_c2_light100b_1.ibw')
 
 data = clamp_ephys.workflows.cell(cell_path, path_to_data_notes=notes_path, timepoint=timepoint)
 
@@ -34,8 +34,8 @@ data.get_filtered_peaks(stim_time, post_stim)
 
 # data.get_peaks_widths(stim_time, width)   
 
-# data.sweeps = data.traces_filtered - data.baseline_filtered
-data.sweeps = pd.DataFrame(data.mean_traces_filtered - data.mean_baseline_filtered)
+data.sweeps = data.traces_filtered - data.baseline_filtered
+# data.sweeps = pd.DataFrame(data.mean_traces_filtered - data.mean_baseline_filtered)
 
 window_start = (stim_time + 5) * fs
 all_peaks_kinetics_df = pd.DataFrame()
@@ -45,7 +45,7 @@ first3_kinetics_avg_df = pd.DataFrame()
 
 
 #%% this runs on an individual sweep
-sweep = 0
+sweep = 29
 peak_number = 0     
 
 
@@ -155,6 +155,7 @@ all_peaks_kinetics_data = pd.DataFrame({'sweep #': sweep,
 all_peaks_kinetics_data = all_peaks_kinetics_data[all_peaks_kinetics_data.tau < 500] # drops peaks with tau values over 500
 
 
+data.plot_first3_events(all_peaks_kinetics_data, sweep, trace)
 delay_to_response = all_peaks_kinetics_data.iloc[0, 2] # gets the time of the first peak
 
 # calculates the average kinetic values for all peaks in the given sweep 
@@ -187,110 +188,6 @@ data.avg_first3_kinetics_avg_df = pd.DataFrame(first3_kinetics_avg_df.mean(axis=
 data.avg_first3_kinetics_avg_df = pd.concat([data.metadata, data.avg_first3_kinetics_avg_df], axis=1)
 data.avg_first3_kinetics_avg_df.drop(['sweep #'], axis=1, inplace=True)
 
-
-
-'''''''''''''''''''''''''''old code below''''''''''''''''''''
-'''
-sweep = 0
-peak_number = 0     
-trace = data.sweeps.iloc[window_start:, sweep].values
-thresh = 2.5 * trace.std()
-
-peaks, properties = scipy.signal.find_peaks(trace * -1, distance=0.5*fs, prominence=thresh, width=width*fs)
-prominence_data = list(properties.values())[0:3]
-
-fig = plt.figure()
-fig.suptitle('Sweep {}'.format(sweep))
-plt.plot(trace)
-plt.plot(peaks, trace[peaks], 'x')
-
-ninety_left = data.all_widths_df.loc[(sweep), 'ninety_left']
-ten_left = data.all_widths_df.loc[(sweep), 'ten_left']
-ten_to_ninety = (ninety_left - ten_left) / fs
-peak_time = data.all_widths_df.loc[(sweep), 'peaks_index'] / fs
-hw_time = data.all_widths_df.loc[(sweep), 'half_widths'] / fs
-
-if data.mean_peak_filtered > 0:
-    invert = 1
-
-else:
-    invert = -1
-
-peak = peaks[peak_number]
-
-#tau = data.get_tau(trace, sweep, peak_number)
-# entire tau fxn below
-if data.mean_peak_filtered > 0:
-        invert = 1
-    
-else:
-    invert = -1
-
-# using peak to 90% decay as decay window
-decay_end = data.all_widths_df.loc[(sweep, peak_number), 'ten_right'].astype(int) # indexing needs to be a whole number
-peak_time = data.all_widths_df.loc[(sweep, peak_number), 'peaks_index'].astype(int)
-peak_trace = trace[peak_time:decay_end + 1] * invert
-xtime_adj = np.arange(0, len(peak_trace)) / fs
-
-# if you actually need guesses, i'm taking a guess at tau
-# take first index value that goes below 1*tau value, then multiply by 2 to account for noise
-# and divide by sampling time to get ms time scale
-# these should be the same regardless of where stopping
-if len(np.where(peak_trace < (peak_trace[0] * 0.37))[0]) == 0:
-    guess_tau_time = 3
-else:
-    guess_tau_time  = np.where(peak_trace < (peak_trace[0] * 0.37))[0][0] * 2 / fs
-starting_params = [peak_trace[0], guess_tau_time, 0]
-
-# fits
-try:
-    popt, pcov = scipy.optimize.curve_fit(
-        f=clamp_ephys.clamp.decay_func,
-        xdata=xtime_adj,
-        ydata=peak_trace, 
-        p0=starting_params,
-        bounds=((-np.inf, 0, -np.inf), (np.inf, np.inf, np.inf))
-        )
-
-except RuntimeError:
-    popt = (np.nan, np.nan, np.nan)
-    
-current_peak, tau, offset = popt
-
-# charge = data.get_charge_transf(trace, sweep, peak_number)
-# entire charge fxn below
-
-
-trace_start = data.all_widths_df.loc[(sweep, peak_number), 'ten_left'].astype(int)
-trace_end = data.all_widths_df.loc[(sweep, peak_number), 'ten_right'].astype(int) # indexing needs to be a whole number
-whole_trace = trace[trace_start:trace_end + 1]
-xtime_adj = np.arange(0, len(whole_trace)) / fs
-
-# # sanity check plot
-ten_height = data.all_widths_df.loc[(sweep, peak_number), 'ten_height'].astype(int)
-plt.figure()
-plt.plot(xtime_adj, whole_trace, color='k', label='data')
-#plt.hlines(ten_height, trace_start, trace_end, color="C3")
-plt.show()
-
-# take baseline as 10 ms before event onset, or start of sweep to event onset
-# if event occurs less than 10 mins from sweep start
-if trace_start < 10 * fs:
-    event_baseline = np.mean(trace[:trace_start])
-else:
-    baseline_window_start = trace_start - 10 * fs
-    event_baseline = np.mean(trace[baseline_window_start:trace_start])
-    
-whole_trace_sub = whole_trace - event_baseline
-
-plt.figure()
-plt.plot(xtime_adj, whole_trace_sub, color='k', label='data')
-#plt.hlines(ten_height, trace_start, trace_end, color="C3")
-plt.show()
-
-charge = scipy.integrate.trapz(whole_trace_sub, xtime_adj)
-# convert charge value to pA * s from ms
-charge = charge / 1000
 
 
 
@@ -383,7 +280,8 @@ for sweep in data.all_widths_df.index.levels[0]:     # this only pulls out sweep
 
     if len(all_peaks_kinetics_data) == 0: # moves onto the next sweep if no peaks exist after dropping tau values
         continue
-
+    
+    data.plot_first3_events(all_peaks_kinetics_data, sweep, trace)
     delay_to_response = all_peaks_kinetics_data.iloc[0, 2] # gets the time of the first peak
 
     # calculates the average kinetic values for all peaks in the given sweep 
