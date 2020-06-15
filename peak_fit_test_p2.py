@@ -22,9 +22,10 @@ width = 3               # ms, the required width for classifying an event as a p
 timepoint = 'p2'
 
 # paths to clamp_ephys/test_data/
-project_path = os.path.join(os.path.expanduser('~'), 'Documents', 'phd_projects', 'Injected_GC_data')
+project_path = os.path.join(os.path.expanduser('~'), 'janeswhuang@gmail.com', 
+    'grad_school', 'dissertation', 'data_analysis', 'Injected_GC_data')
 notes_path = os.path.join(project_path, 'VC_pairs', 'tables', 'p2_data_notes.csv')
-cell_path = os.path.join(project_path, 'VC_pairs', 'data', 'p2', 'JH200311_c5_light100.ibw')
+cell_path = os.path.join(project_path, 'VC_pairs', 'data', 'p2', 'JH200311_c4_light100_depol.ibw')
 
 data = clamp_ephys.workflows.cell(cell_path, path_to_data_notes=notes_path, timepoint=timepoint)
 
@@ -45,7 +46,7 @@ first3_kinetics_avg_df = pd.DataFrame()
 
 
 #%% this runs on an individual sweep
-sweep = 7
+sweep = 0
 peak_number = 0     
 
 
@@ -61,8 +62,12 @@ test_amp_df = pd.DataFrame()
      
 trace = data.sweeps.iloc[window_start:, sweep].values
 thresh = 2.5 * trace.std()
+# cwt_widths = list(range(3,5))
+# cwt_widths = [i * fs for i in cwt_widths]
 
 peaks, properties = scipy.signal.find_peaks(trace*invert, distance=0.5*data.fs, prominence=thresh, width=width*data.fs)
+#peaks = scipy.signal.find_peaks_cwt(trace*invert, widths = cwt_widths)
+xtime_adj = np.arange(0, len(trace)) / fs
 
 fig = plt.figure()
 fig.suptitle('Sweep {}'.format(sweep))

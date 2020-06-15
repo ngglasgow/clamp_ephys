@@ -861,7 +861,7 @@ class file_structure:
                 home_dir = '/Volumes/Urban'
 
             elif machine == 'Linux':
-                home_dir = '/home/jhuang/Documents/phd_projects'
+                home_dir = '/home/jhuang/janeswhuang@gmail.com/grad_school/dissertation/data_analysis'
 
             elif machine == 'Windows':
                 home_dir = r"C:\Users\jhuang\Documents\phd_projects"

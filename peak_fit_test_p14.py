@@ -22,7 +22,8 @@ width = 3               # ms, the required width for classifying an event as a p
 timepoint = 'p14'
 
 # paths to clamp_ephys/test_data/
-project_path = os.path.join(os.path.expanduser('~'), 'Documents', 'phd_projects', 'Injected_GC_data')
+project_path = os.path.join(os.path.expanduser('~'), 'janeswhuang@gmail.com', 
+    'grad_school', 'dissertation', 'data_analysis', 'Injected_GC_data')
 notes_path = os.path.join(project_path, 'VC_pairs', 'tables', 'p14_data_notes.csv')
 cell_path = os.path.join(project_path, 'VC_pairs', 'data', 'p14', 'JH190904_c2_light100b_1.ibw')
 
