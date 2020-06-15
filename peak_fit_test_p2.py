@@ -13,6 +13,7 @@ post_stim = 250         # ms, amount of time after stimulus to look for max valu
 baseline_start = 3000   # ms, time in the sweep to start taking the baseline
 baseline_end = 6000     # ms, time in the sweep at which baseline ends
 tp_start = 5            # ms, time of start of test pulse
+tp_length = 20          # ms, time including duration of test pulse until when trace returns to normal
 vm_jump = 10            # mV, test pulse voltage jump
 pre_tp = 3              # ms, amount of time before test pulse start to get baseline
 unit_scaler = -12       # unitless, scaler to get back to A, from pA
@@ -38,7 +39,7 @@ data.get_filtered_peaks(stim_time, post_stim)
 data.sweeps = data.traces_filtered - data.baseline_filtered
 # data.sweeps = pd.DataFrame(data.mean_traces_filtered - data.mean_baseline_filtered)
 
-window_start = (stim_time + 20) * fs
+window_start = (stim_time + tp_length) * fs
 all_peaks_kinetics_df = pd.DataFrame()
 all_peaks_kinetics_avg_df = pd.DataFrame()
 first3_kinetics_avg_df = pd.DataFrame()
@@ -46,7 +47,7 @@ first3_kinetics_avg_df = pd.DataFrame()
 
 
 #%% this runs on an individual sweep
-sweep = 6
+sweep = 0
 peak_number = 0     
 
 
@@ -55,19 +56,15 @@ if data.mean_peak_filtered > 0:
 else:
     invert = -1
 
-window_start = (stim_time + 20) * data.fs
+window_start = (stim_time + tp_length) * data.fs
 all_widths_df = pd.DataFrame()
 data.all_widths_df = pd.DataFrame()
 test_amp_df = pd.DataFrame()
      
 trace = data.sweeps.iloc[window_start:, sweep].values
-thresh = 3 * trace.std()
-# cwt_widths = list(range(3,5))
-# cwt_widths = [i * fs for i in cwt_widths]
+thresh = 2.5 * trace.std()
 
 peaks, properties = scipy.signal.find_peaks(trace*invert, distance=0.5*data.fs, prominence=thresh, width=width*data.fs)
-#peaks = scipy.signal.find_peaks_cwt(trace*invert, widths = cwt_widths)
-xtime_adj = np.arange(0, len(trace)) / fs
 
 fig = plt.figure()
 fig.suptitle('Sweep {}'.format(sweep))
@@ -157,7 +154,23 @@ all_peaks_kinetics_data = pd.DataFrame({'sweep #': sweep,
                                         'half-width (ms)': hw_time,
                                         'charge transferred (pA * s)': charge_list})
 
-all_peaks_kinetics_data = all_peaks_kinetics_data[all_peaks_kinetics_data.tau < 500] # drops peaks with tau values over 500
+# drops peaks with tau values over 500 and rise times over 100 ms
+all_peaks_kinetics_data = all_peaks_kinetics_data[(all_peaks_kinetics_data['tau'] < 10) & 
+    (all_peaks_kinetics_data['10 to 90% RT (ms)'] < 100)] 
+
+remaining_peaks_indices = (all_peaks_kinetics_data['peak time (ms)'] * fs).astype(int)
+
+# plot to see where remaining peaks are
+fig = plt.figure()
+fig.suptitle('Sweep {}'.format(sweep))
+plt.plot(trace)
+plt.plot(remaining_peaks_indices, trace[remaining_peaks_indices], 'x')
+
+# plot to see where 10-90% is
+plt.plot(peaks, trace[peaks], "x")
+plt.hlines(ten_height, ten_left, ninety_left, color="C3")
+plt.show()
+
 
 
 data.plot_first3_events(all_peaks_kinetics_data, sweep, trace)
@@ -201,7 +214,7 @@ if data.mean_peak_filtered > 0:
 else:
     invert = -1
 
-window_start = (stim_time + 20) * data.fs
+window_start = (stim_time + tp_length) * data.fs
 all_widths_df = pd.DataFrame()
 data.all_widths_df = pd.DataFrame()
 
