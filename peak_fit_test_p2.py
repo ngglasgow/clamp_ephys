@@ -25,7 +25,7 @@ timepoint = 'p2'
 project_path = os.path.join(os.path.expanduser('~'), 'janeswhuang@gmail.com', 
     'grad_school', 'dissertation', 'data_analysis', 'Injected_GC_data')
 notes_path = os.path.join(project_path, 'VC_pairs', 'tables', 'p2_data_notes.csv')
-cell_path = os.path.join(project_path, 'VC_pairs', 'data', 'p2', 'JH200311_c4_light100_depol.ibw')
+cell_path = os.path.join(project_path, 'VC_pairs', 'data', 'p2', 'JH200311_c1_light100_depol.ibw')
 
 data = clamp_ephys.workflows.cell(cell_path, path_to_data_notes=notes_path, timepoint=timepoint)
 
@@ -46,7 +46,7 @@ first3_kinetics_avg_df = pd.DataFrame()
 
 
 #%% this runs on an individual sweep
-sweep = 0
+sweep = 6
 peak_number = 0     
 
 
@@ -61,7 +61,7 @@ data.all_widths_df = pd.DataFrame()
 test_amp_df = pd.DataFrame()
      
 trace = data.sweeps.iloc[window_start:, sweep].values
-thresh = 2.5 * trace.std()
+thresh = 3 * trace.std()
 # cwt_widths = list(range(3,5))
 # cwt_widths = [i * fs for i in cwt_widths]
 
@@ -201,7 +201,7 @@ if data.mean_peak_filtered > 0:
 else:
     invert = -1
 
-window_start = (stim_time + 5) * data.fs
+window_start = (stim_time + 20) * data.fs
 all_widths_df = pd.DataFrame()
 data.all_widths_df = pd.DataFrame()
 
