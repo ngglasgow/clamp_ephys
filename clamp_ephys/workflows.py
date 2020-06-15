@@ -15,7 +15,7 @@ class cell:
         Creates a cell object with the following attributes depending on injection timepoint:
         ----------
         tp_start        # ms, time of start of test pulse
-        tp_length       # ms, duration of test pulse
+        tp_length       # ms, time including duration of test pulse until when trace returns to normal
         vm_jump         # mV, test pulse voltage jump
         pre_tp          # ms, amount of time before test pulse start to get baseline
         amp_factor      # scaler for making plots in pA
@@ -34,7 +34,7 @@ class cell:
             self.timepoint = timepoint
             self.fs = 25
             self.tp_start = 5
-            self.tp_length = 5
+            self.tp_length = 20
             self.vm_jump = 10
             self.pre_tp = 3
             self.amp_factor = 1
@@ -42,7 +42,7 @@ class cell:
             self.timepoint = timepoint
             self.fs = 10
             self.tp_start = 50
-            self.tp_length = 20
+            self.tp_length = 300
             self.vm_jump = -5
             self.pre_tp = 11
             self.amp_factor = 1000
